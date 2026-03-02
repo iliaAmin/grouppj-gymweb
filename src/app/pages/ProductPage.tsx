@@ -75,10 +75,6 @@ export function ProductPage() {
     }
   };
 
-  const relatedProducts = products
-    .filter(p => p.category === product.category && p.id !== product.id)
-    .slice(0, 4);
-
   return (
     <div className="min-h-screen bg-muted/30">
       <div className="container mx-auto px-4 py-8">
