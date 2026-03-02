@@ -63,6 +63,10 @@ The app is integrated with Firebase for auth and a Firestore database.
     and can be extended arbitrarily. The frontend fetches all documents on the products page and
     looks up single items by document ID on the product detail page. You may derive a lookup map
     from the fetched array if you prefer hash-style access.
+  - `orders` – created when a customer checks out. Each order record contains line items, total
+    amount, shipping address, customer information, timestamps and a `status` field. The site
+    provides a Checkout page and an Orders page that read/write this collection via the
+    `OrderContext`.
 
 - **Rules**
   - Read access to `inventory` is open to all users; write access should be restricted to admins.
