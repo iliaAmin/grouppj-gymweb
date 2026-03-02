@@ -1,8 +1,7 @@
 import { FormEvent, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
-import { db } from '../../firebase';
-import { collection, addDoc, getDocs } from 'firebase/firestore';
+import { useProducts } from '../context/ProductsContext';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
@@ -45,12 +44,12 @@ export function AdminPage() {
     setForm((f) => ({ ...f, [name]: name === 'price' || name === 'rating' ? Number(value) : value }));
   };
 
+  const { addProduct } = useProducts();
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     try {
-      // write to inventory collection as requested
-      const col = collection(db, 'inventory');
-      await addDoc(col, form);
+      await addProduct(form as any);
       setMessage('Product added successfully');
       setForm({ name: '', description: '', price: 0, category: '', image: '', rating: 0 });
     } catch (err) {

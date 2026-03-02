@@ -112,6 +112,15 @@ export function Header() {
                       </li>
                     )}
                     <li>
+                      <Link
+                        to="/orders"
+                        className="block px-4 py-2 text-sm hover:bg-accent"
+                        onClick={() => setDropdownOpen(false)}
+                      >
+                        My Orders
+                      </Link>
+                    </li>
+                    <li>
                       <button
                         className="w-full text-left px-4 py-2 text-sm hover:bg-accent"
                         onClick={() => {

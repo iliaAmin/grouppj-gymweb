@@ -1,4 +1,4 @@
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useCart } from '../context/CartContext';
@@ -31,6 +31,8 @@ export function CartPage() {
       </div>
     );
   }
+
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -162,7 +164,7 @@ export function CartPage() {
                   </span>
                 </div>
 
-                <Button className="w-full mb-3" size="lg">
+                <Button className="w-full mb-3" size="lg" onClick={() => navigate('/checkout')}>
                   Proceed to Checkout
                 </Button>
 

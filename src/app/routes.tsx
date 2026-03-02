@@ -6,6 +6,8 @@ import { ProductPage } from './pages/ProductPage';
 import { CartPage } from './pages/CartPage';
 import { LoginPage } from './pages/LoginPage';
 import { AdminPage } from './pages/AdminPage';
+import { CheckoutPage } from './pages/CheckoutPage';
+import { OrdersPage } from './pages/OrdersPage';
 import { UserPage } from './pages/UserPage';
 
 export const router = createBrowserRouter([
@@ -17,6 +19,8 @@ export const router = createBrowserRouter([
       { path: 'products', Component: ProductsPage },
       { path: 'product/:id', Component: ProductPage },
       { path: 'cart', Component: CartPage },
+      { path: 'checkout', Component: CheckoutPage },
+      { path: 'orders', Component: OrdersPage },
       { path: 'login', Component: LoginPage },
       { path: 'profile', Component: UserPage },
       { path: 'admin', Component: AdminPage },

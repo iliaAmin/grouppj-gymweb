@@ -1,21 +1,19 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Search } from 'lucide-react';
-// products now come from Firestore inventory collection
 import { ProductCard } from '../components/ProductCard';
 import { Input } from '../components/ui/input';
-import { db } from '../../firebase';
-import { collection, getDocs } from 'firebase/firestore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Checkbox } from '../components/ui/checkbox';
 import { Label } from '../components/ui/label';
 import { motion } from 'motion/react';
+import { useProducts } from '../context/ProductsContext';
 
 export function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [priceRange, setPriceRange] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('default');
-  const [products, setProducts] = useState<any[]>([]); // fetch from firestore
+  const { products } = useProducts();
   const [loading, setLoading] = useState(true);
 
   const categories = ['all', ...Array.from(new Set(products.map(p => p.category)))]
@@ -52,22 +50,11 @@ export function ProductsPage() {
     return filtered;
   }, [searchQuery, selectedCategory, priceRange, sortBy]);
 
-  // retrieve inventory from firestore when component mounts
+  // use context to provide products; snapshot listener will populate
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const col = collection(db, 'inventory');
-        const snap = await getDocs(col);
-        const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setProducts(items as any[]);
-      } catch (e) {
-        console.error('failed to load products', e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProducts();
-  }, []);
+    // once products are loaded (could be empty) we can clear loader
+    setLoading(false);
+  }, [products]);
 
   return (
     <div className="min-h-screen bg-muted/30">
