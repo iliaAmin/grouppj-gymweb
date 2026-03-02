@@ -69,7 +69,11 @@ The app is integrated with Firebase for auth and a Firestore database.
   - `users` documents are written automatically via the AuthContext; admin updates can be made
     through the admin panel or Firestore console.
 
-Remember to configure your Firebase credentials via environment variables (`VITE_FIREBASE_*`).
+The code reads Firebase configuration from `import.meta.env.VITE_FIREBASE_*`, but **falls back
+to hard‑coded values** included in `src/firebase.ts`. You do *not* need a `.env` file for the
+app to work locally; the hardcoded project config will be used. However, when deploying (Netlify,
+Vercel, etc.) it’s best practice to set these variables in the hosting environment rather than
+committing secrets.  A `.env` file is optional and ignored by git in this repo.
 - All dependencies are managed via npm. React versions are specified in `peerDependencies`.
 
 ---

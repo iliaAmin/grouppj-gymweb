@@ -65,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
       console.log('[Auth] creating new profile document', data);
       await setDoc(docRef, data);
+      console.log('[Auth] new user profile written to users collection');
     }
     setUser(buildUser(firebaseUser, data));
   };
@@ -89,6 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // write initial profile with isAdmin=false
       const profile = { email, name, isAdmin: false };
       await setDoc(doc(db, 'users', credential.user.uid), profile);
+      console.log('[Auth] profile document created at signup');
       setUser(buildUser(credential.user, profile));
     } catch (err) {
       console.error('[Auth] signUp error', err);
