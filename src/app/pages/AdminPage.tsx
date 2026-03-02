@@ -31,6 +31,7 @@ export function AdminPage() {
     stock: 'in',
   });
   const [message, setMessage] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user || !isAdmin) {
@@ -44,17 +45,23 @@ export function AdminPage() {
     setForm((f) => ({ ...f, [name]: name === 'price' || name === 'rating' ? Number(value) : value }));
   };
 
-  const { addProduct } = useProducts();
+  const { products, addProduct, updateProduct, deleteProduct, toggleStock } = useProducts();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     try {
-      await addProduct(form as any);
-      setMessage('Product added successfully');
+      if (editingId) {
+        await updateProduct(editingId, form as any);
+        setMessage('Product updated');
+      } else {
+        await addProduct(form as any);
+        setMessage('Product added successfully');
+      }
       setForm({ name: '', description: '', price: 0, category: '', image: '', rating: 0 });
+      setEditingId(null);
     } catch (err) {
       console.error(err);
-      setMessage('Failed to add product');
+      setMessage('Failed to save product');
     }
   };
 
@@ -121,8 +128,71 @@ export function AdminPage() {
           <Label htmlFor="image">Image URL</Label>
           <Input id="image" name="image" value={form.image} onChange={handleChange} />
         </div>
-        <Button type="submit">Add product</Button>
+        <Button type="submit">{editingId ? 'Update product' : 'Add product'}</Button>
       </form>
+
+      {/* existing products list */}
+      <div className="mt-12">
+        <h2 className="text-xl font-semibold mb-4">Existing products</h2>
+        {products.length === 0 ? (
+          <p>No products yet.</p>
+        ) : (
+          <table className="w-full table-auto border">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="p-2 text-left">Name</th>
+                <th className="p-2 text-left">Price</th>
+                <th className="p-2 text-left">Category</th>
+                <th className="p-2 text-left">Stock</th>
+                <th className="p-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.map((p) => (
+                <tr key={p.id} className="border-t">
+                  <td className="p-2">{p.name}</td>
+                  <td className="p-2">${p.price}</td>
+                  <td className="p-2">{p.category}</td>
+                  <td className="p-2">
+                    {p.stock === 'in' || p.stock === true ? 'In' : 'Out'}
+                  </td>
+                  <td className="p-2 flex gap-2">
+                    <button
+                      className="text-sm text-blue-600"
+                      onClick={() => {
+                        setEditingId(p.id as string);
+                        setForm({
+                          name: p.name || '',
+                          description: p.description || '',
+                          price: p.price || 0,
+                          category: p.category || '',
+                          image: p.image || '',
+                          rating: p.rating || 0,
+                          stock: (p.stock === 'in' || p.stock === true) ? 'in' : 'out',
+                        });
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="text-sm text-green-600"
+                      onClick={() => p.id && toggleStock(p.id as string)}
+                    >
+                      Toggle Stock
+                    </button>
+                    <button
+                      className="text-sm text-red-600"
+                      onClick={() => p.id && deleteProduct(p.id as string)}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }
