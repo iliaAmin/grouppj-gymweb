@@ -32,6 +32,8 @@ export function AdminPage() {
   });
   const [message, setMessage] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [csvError, setCsvError] = useState('');
+  const [csvLoading, setCsvLoading] = useState(false);
 
   useEffect(() => {
     if (!user || !isAdmin) {
@@ -65,10 +67,68 @@ export function AdminPage() {
     }
   };
 
+  const parseCsv = async (file: File) => {
+    setCsvError('');
+    setCsvLoading(true);
+    try {
+      const text = await file.text();
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) {
+        throw new Error('CSV must contain header and at least one row');
+      }
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      const required = ['name','description','price','category'];
+      required.forEach(r => {
+        if (!headers.includes(r)) throw new Error(`Missing column: ${r}`);
+      });
+      const rowProducts: NewProduct[] = lines.slice(1).map(line => {
+        const values = line.split(',');
+        const obj: any = {};
+        headers.forEach((h,i) => {
+          obj[h] = values[i]?.trim();
+        });
+        return {
+          name: obj.name || '',
+          description: obj.description || '',
+          price: Number(obj.price) || 0,
+          category: obj.category || '',
+          image: obj.image || '',
+          rating: Number(obj.rating) || 0,
+          stock: obj.stock === 'out' ? 'out' : 'in',
+        };
+      });
+      // upload sequentially
+      for (const prod of rowProducts) {
+        await addProduct(prod as any);
+      }
+      setMessage(`${rowProducts.length} products imported`);
+    } catch (err: any) {
+      console.error(err);
+      setCsvError(err.message || 'Failed to parse CSV');
+    } finally {
+      setCsvLoading(false);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-4">Admin panel</h1>
       {message && <p className="mb-4 text-green-600">{message}</p>}
+      {csvError && <p className="mb-4 text-red-600">{csvError}</p>}
+      <div className="mb-6">
+        <label className="font-semibold">Import CSV</label>
+        <input
+          type="file"
+          accept=".csv"
+          disabled={csvLoading}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) parseCsv(file);
+            e.target.value = '';
+          }}
+          className="block mt-1"
+        />
+      </div>
       <form onSubmit={handleSubmit} className="space-y-4 max-w-xl">
         <div>
           <Label htmlFor="name">Name</Label>
