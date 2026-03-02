@@ -14,7 +14,7 @@ import {
   getDoc,
   updateDoc,
 } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { auth, db } from '../../firebase';
 
 interface User {
   name: string;
@@ -49,11 +49,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const fetchProfile = async (firebaseUser: FirebaseUser) => {
+    console.log('[Auth] fetchProfile for', firebaseUser.uid);
     const docRef = doc(db, 'users', firebaseUser.uid);
     const snap = await getDoc(docRef);
-    let data = null;
+    let data: any = null;
     if (snap.exists()) {
       data = snap.data();
+      console.log('[Auth] profile data found', data);
     } else {
       // if profile missing (maybe user signed up via other method), create with defaults
       data = {
@@ -61,22 +63,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || '',
         isAdmin: false,
       };
+      console.log('[Auth] creating new profile document', data);
       await setDoc(docRef, data);
     }
     setUser(buildUser(firebaseUser, data));
   };
 
   const login = async (email: string, password: string) => {
-    const credential = await signInWithEmailAndPassword(auth, email, password);
-    await fetchProfile(credential.user);
+    console.log('[Auth] login attempt', email);
+    try {
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+      console.log('[Auth] login success', credential.user.uid);
+      await fetchProfile(credential.user);
+    } catch (err) {
+      console.error('[Auth] login error', err);
+      throw err;
+    }
   };
 
   const signUp = async (email: string, password: string, name: string) => {
-    const credential = await createUserWithEmailAndPassword(auth, email, password);
-    // write initial profile with isAdmin=false
-    const profile = { email, name, isAdmin: false };
-    await setDoc(doc(db, 'users', credential.user.uid), profile);
-    setUser(buildUser(credential.user, profile));
+    console.log('[Auth] signUp attempt', email);
+    try {
+      const credential = await createUserWithEmailAndPassword(auth, email, password);
+      console.log('[Auth] signUp success', credential.user.uid);
+      // write initial profile with isAdmin=false
+      const profile = { email, name, isAdmin: false };
+      await setDoc(doc(db, 'users', credential.user.uid), profile);
+      setUser(buildUser(credential.user, profile));
+    } catch (err) {
+      console.error('[Auth] signUp error', err);
+      throw err;
+    }
   };
 
   const logout = () => {
@@ -94,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // listen for auth state changes and sync profile
   useEffect(() => {
     return onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log('[Auth] auth state change', firebaseUser?.uid);
       if (firebaseUser) {
         await fetchProfile(firebaseUser);
       } else {

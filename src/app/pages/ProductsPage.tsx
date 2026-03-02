@@ -3,7 +3,7 @@ import { Search } from 'lucide-react';
 // products now come from Firestore inventory collection
 import { ProductCard } from '../components/ProductCard';
 import { Input } from '../components/ui/input';
-import { db } from '../firebase';
+import { db } from '../../firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Checkbox } from '../components/ui/checkbox';

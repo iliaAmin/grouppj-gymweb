@@ -1,7 +1,7 @@
 import { FormEvent, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
-import { db } from '../firebase';
+import { db } from '../../firebase';
 import { collection, addDoc, getDocs } from 'firebase/firestore';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';

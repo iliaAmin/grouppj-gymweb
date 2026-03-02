@@ -5,7 +5,7 @@ import { motion } from 'motion/react';
 import { useCart, Product } from '../context/CartContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
-import { db } from '../firebase';
+import { db } from '../../firebase';
 import { doc, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 
 export function ProductPage() {
