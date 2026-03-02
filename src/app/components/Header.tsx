@@ -1,5 +1,6 @@
-import { Link } from 'react-router';
+import { Link } from 'react-router'; // react-router version 6 provides Link
 import { ShoppingCart, Dumbbell, Moon, Sun, User } from 'lucide-react';
+
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { Badge } from './ui/badge';
@@ -64,6 +65,14 @@ export function Header() {
                 <DropdownMenuItem asChild>
                   <Link to="/cart">My Cart</Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/profile">Profile</Link>
+                </DropdownMenuItem>
+                {user?.isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin">Admin Panel</Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem>My Orders</DropdownMenuItem>
                 <DropdownMenuItem>Settings</DropdownMenuItem>
                 <DropdownMenuSeparator />

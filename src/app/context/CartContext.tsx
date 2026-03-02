@@ -1,13 +1,16 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 
 export interface Product {
-  id: number;
+  id?: number | string; // firestore docs may use string ids
   name: string;
   price: number;
-  image: string;
-  category: string;
-  description: string;
-  rating: number;
+  image?: string;
+  category?: string;
+  description?: string;
+  rating?: number;
+  stock?: string | boolean;
+  // allow extra fields from firestore
+  [key: string]: any;
 }
 
 export interface CartItem extends Product {

@@ -10,15 +10,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 
 export function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { login, user } = useAuth();
+  const [error, setError] = useState('');
+  const { login, signUp, user } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    login(email, password);
-    navigate('/');
+    setError('');
+    try {
+      if (isLogin) {
+        await login(email, password);
+      } else {
+        await signUp(email, password, name);
+      }
+      navigate('/');
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Failed to authenticate');
+    }
   };
 
   if (user) {
@@ -80,6 +92,25 @@ export function LoginPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {error && <p className="text-red-600 text-sm">{error}</p>}
+              {!isLogin && (
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="name"
+                      type="text"
+                      placeholder="Your name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <div className="relative">

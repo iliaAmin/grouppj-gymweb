@@ -1,18 +1,62 @@
 import { useParams, Link } from 'react-router';
 import { Star, ShoppingCart, ArrowLeft, Minus, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { products } from '../data/products';
-import { useCart } from '../context/CartContext';
+import { useCart, Product } from '../context/CartContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
+import { db } from '../firebase';
+import { doc, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 
 export function ProductPage() {
   const { id } = useParams();
   const { addToCart } = useCart();
   const [quantity, setQuantity] = useState(1);
-  
-  const product = products.find(p => p.id === Number(id));
+  const [product, setProduct] = useState<Product | null>(null);
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetch = async () => {
+      if (!id) return;
+      try {
+        const docRef = doc(db, 'inventory', id);
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          const data = snap.data() as any;
+          const prod = { id: snap.id, ...data } as Product;
+          setProduct(prod);
+
+          // fetch related
+          if (data.category) {
+            const q = query(
+              collection(db, 'inventory'),
+              where('category', '==', data.category),
+              limit(4)
+            );
+            const qSnap = await getDocs(q);
+            const related = qSnap.docs
+              .filter(d => d.id !== snap.id)
+              .map(d => ({ id: d.id, ...d.data() } as Product));
+            setRelatedProducts(related);
+          }
+        }
+      } catch (e) {
+        console.error('error fetching product', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetch();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-12 text-center">
+        <p>Loading product...</p>
+      </div>
+    );
+  }
 
   if (!product) {
     return (

@@ -13,6 +13,9 @@ This repository contains a React/Vite application developed as part of a univers
 
 ## 🚀 Development
 
+> **Note:** this project now depends on Firebase. Run `npm install firebase` (or `pnpm add firebase`/`yarn add firebase`) before starting the dev server so that TypeScript can resolve `firebase/*` imports.
+
+
 1. Install dependencies:
    ```bash
    npm install
@@ -48,6 +51,25 @@ The contents of `dist/` can also be deployed to any static-hosting service (e.g.
 ## 🔧 Notes
 
 - Uses React Router for navigation, so client-side routing requires a catch-all redirect.
+
+## 🔐 Firebase / Firestore
+
+The app is integrated with Firebase for auth and a Firestore database.
+
+- **Collections**
+  - `users` – user profiles created on signup (fields: `name`, `email`, `isAdmin`, etc.)
+  - `inventory` – product documents used to populate the shop. Fields include
+    `name`, `description`, `price`, `category`, `image`, `rating`, `stock` ("in"/"out" or boolean),
+    and can be extended arbitrarily. The frontend fetches all documents on the products page and
+    looks up single items by document ID on the product detail page. You may derive a lookup map
+    from the fetched array if you prefer hash-style access.
+
+- **Rules**
+  - Read access to `inventory` is open to all users; write access should be restricted to admins.
+  - `users` documents are written automatically via the AuthContext; admin updates can be made
+    through the admin panel or Firestore console.
+
+Remember to configure your Firebase credentials via environment variables (`VITE_FIREBASE_*`).
 - All dependencies are managed via npm. React versions are specified in `peerDependencies`.
 
 ---

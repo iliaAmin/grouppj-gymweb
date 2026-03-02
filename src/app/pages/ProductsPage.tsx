@@ -1,8 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search } from 'lucide-react';
-import { products } from '../data/products';
+// products now come from Firestore inventory collection
 import { ProductCard } from '../components/ProductCard';
 import { Input } from '../components/ui/input';
+import { db } from '../firebase';
+import { collection, getDocs } from 'firebase/firestore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Checkbox } from '../components/ui/checkbox';
 import { Label } from '../components/ui/label';
@@ -13,8 +15,14 @@ export function ProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [priceRange, setPriceRange] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('default');
+  const [products, setProducts] = useState<any[]>([]); // fetch from firestore
+  const [loading, setLoading] = useState(true);
 
-  const categories = ['all', ...Array.from(new Set(products.map(p => p.category)))];
+  const categories = ['all', ...Array.from(new Set(products.map(p => p.category)))]
+    .filter(Boolean) as string[];
+
+  // if you need hash-map style access you can build one from the array:
+  // const productsMap = useMemo(() => Object.fromEntries(products.map(p => [p.id, p])), [products]);
 
   const filteredAndSortedProducts = useMemo(() => {
     let filtered = products.filter(product => {
@@ -44,8 +52,26 @@ export function ProductsPage() {
     return filtered;
   }, [searchQuery, selectedCategory, priceRange, sortBy]);
 
+  // retrieve inventory from firestore when component mounts
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const col = collection(db, 'inventory');
+        const snap = await getDocs(col);
+        const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setProducts(items as any[]);
+      } catch (e) {
+        console.error('failed to load products', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProducts();
+  }, []);
+
   return (
     <div className="min-h-screen bg-muted/30">
+      {loading && <p className="text-center py-8">Loading products...</p>}
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground py-12 px-4">
         <div className="container mx-auto text-center">
