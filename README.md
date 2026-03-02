@@ -69,11 +69,32 @@ The app is integrated with Firebase for auth and a Firestore database.
   - `users` documents are written automatically via the AuthContext; admin updates can be made
     through the admin panel or Firestore console.
 
-The code reads Firebase configuration from `import.meta.env.VITE_FIREBASE_*`, but **falls back
-to hard‑coded values** included in `src/firebase.ts`. You do *not* need a `.env` file for the
-app to work locally; the hardcoded project config will be used. However, when deploying (Netlify,
-Vercel, etc.) it’s best practice to set these variables in the hosting environment rather than
-committing secrets.  A `.env` file is optional and ignored by git in this repo.
+The code reads Firebase configuration from `import.meta.env.VITE_FIREBASE_*`. Environment
+variables are injected at build time by Vite, so you should keep them out of the repository.
+
+Create a `.env` file in the **project root** (it’s already listed in `.gitignore`) with the
+following keys:
+
+```dotenv
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=...
+VITE_FIREBASE_PROJECT_ID=...
+VITE_FIREBASE_STORAGE_BUCKET=...
+VITE_FIREBASE_MESSAGING_SENDER_ID=...
+VITE_FIREBASE_APP_ID=...
+# optional measurement id if you use analytics
+VITE_FIREBASE_MEASUREMENT_ID=...
+```
+
+A `.env.example` file is provided to show the structure; copy it and fill in your own values.  Do
+**not** commit your real credentials.  When deploying (Netlify, Vercel, etc.), set the same
+`VITE_FIREBASE_*` variables in the host’s environment settings so the build can access them.
+
+The earlier hardcoded config that was used during development has been removed from the
+default `firebase.ts` implementation; the app will fail to initialize if the variables are
+missing.  This ensures you don’t accidentally leak keys and makes it easier to switch
+between projects or environments.
+
 - All dependencies are managed via npm. React versions are specified in `peerDependencies`.
 
 ---
