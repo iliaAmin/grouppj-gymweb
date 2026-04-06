@@ -13,10 +13,13 @@ import {
   setDoc,
   getDoc,
   updateDoc,
+  collection,
+  onSnapshot,
 } from 'firebase/firestore';
 import { auth, db } from '../../firebase';
 
-interface User {
+interface UserProfile {
+  uid: string;
   name: string;
   email: string;
   avatar?: string;
@@ -24,7 +27,8 @@ interface User {
 }
 
 interface AuthContextType {
-  user: User | null;
+  user: UserProfile | null;
+  users: UserProfile[];
   login: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   logout: () => void;
@@ -36,11 +40,13 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [users, setUsers] = useState<UserProfile[]>([]);
 
   // helper to convert firebase user + firestore profile to our User type
-  const buildUser = (firebaseUser: FirebaseUser, profileData: any): User => {
+  const buildUser = (firebaseUser: FirebaseUser, profileData: any): UserProfile => {
     return {
+      uid: firebaseUser.uid,
       name: profileData?.name || firebaseUser.email?.split('@')[0] || '',
       email: firebaseUser.email || '',
       avatar: profileData?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.uid}`,
@@ -122,10 +128,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  useEffect(() => {
+    const col = collection(db, 'users');
+    const unsubscribe = onSnapshot(col, (snapshot) => {
+      const items: UserProfile[] = snapshot.docs.map((doc) => ({ uid: doc.id, ...(doc.data() as any) }));
+      setUsers(items);
+    });
+    return unsubscribe;
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
         user,
+        users,
         login,
         signUp,
         logout,

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useCart } from '../context/CartContext';
 import { useOrders } from '../context/OrderContext';
@@ -29,6 +29,26 @@ export function CheckoutPage() {
   });
 
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [rememberShipping, setRememberShipping] = useState(false);
+  const [checkoutError, setCheckoutError] = useState('');
+  const [showConfirmation, setShowConfirmation] = useState(false);
+
+  useEffect(() => {
+    const storedAddress = window.localStorage.getItem('shippingAddress');
+    const storedCity = window.localStorage.getItem('shippingCity');
+    const storedZip = window.localStorage.getItem('shippingZip');
+    const storedRemember = window.localStorage.getItem('rememberShipping') === 'true';
+
+    if (storedRemember) {
+      setFormData((current) => ({
+        ...current,
+        address: storedAddress || '',
+        city: storedCity || '',
+        zipCode: storedZip || '',
+      }));
+      setRememberShipping(true);
+    }
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -39,29 +59,52 @@ export function CheckoutPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setCheckoutError('');
 
     if (!isAuthenticated) {
       navigate('/login');
       return;
     }
 
-    // Create order
-    const shippingAddress = `${formData.address}, ${formData.city}, ${formData.zipCode}`;
-    const order = await createOrder(
-      cart,
-      getCartTotal(),
-      formData.email,
-      formData.name,
-      shippingAddress
-    );
+    if (!cart.length) {
+      setCheckoutError('Your cart is empty. Add items before checking out.');
+      return;
+    }
 
-    setOrderId(order.id);
-    clearCart();
+    try {
+      const shippingAddress = `${formData.address}, ${formData.city}, ${formData.zipCode}`;
+      const order = await createOrder(
+        cart,
+        getCartTotal(),
+        formData.email,
+        formData.name,
+        shippingAddress
+      );
 
-    // Redirect to orders page after a moment
-    setTimeout(() => {
-      navigate('/orders');
-    }, 3000);
+      if (rememberShipping) {
+        window.localStorage.setItem('shippingAddress', formData.address);
+        window.localStorage.setItem('shippingCity', formData.city);
+        window.localStorage.setItem('shippingZip', formData.zipCode);
+        window.localStorage.setItem('rememberShipping', 'true');
+      } else {
+        window.localStorage.removeItem('shippingAddress');
+        window.localStorage.removeItem('shippingCity');
+        window.localStorage.removeItem('shippingZip');
+        window.localStorage.removeItem('rememberShipping');
+      }
+
+      setOrderId(order.id);
+      setShowConfirmation(true);
+      clearCart();
+      window.alert('Your order is confirmed!');
+
+      setTimeout(() => {
+        navigate('/orders');
+      }, 3000);
+    } catch (error: any) {
+      console.error(error);
+      setCheckoutError(error?.message || 'Failed to complete checkout. Please try again.');
+    }
   };
 
   if (cart.length === 0 && !orderId) {
@@ -131,8 +174,12 @@ export function CheckoutPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <h1 className="text-3xl mb-8">Checkout</h1>
-
+        <h1 className="text-3xl mb-4">Checkout</h1>
+        {checkoutError && (
+          <div className="mb-6 rounded-3xl bg-rose-50 px-4 py-4 text-sm text-rose-700 shadow-sm">
+            {checkoutError}
+          </div>
+        )}
         <div className="grid md:grid-cols-3 gap-8">
           {/* Checkout Form */}
           <div className="md:col-span-2">
@@ -198,8 +245,8 @@ export function CheckoutPage() {
                         value={formData.city}
                         onChange={handleInputChange}
                         required
-                    />
-                  </div>
+                      />
+                    </div>
                     <div>
                       <Label htmlFor="zipCode">Zip Code</Label>
                       <Input
@@ -210,6 +257,19 @@ export function CheckoutPage() {
                         required
                       />
                     </div>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <input
+                      id="rememberShipping"
+                      name="rememberShipping"
+                      type="checkbox"
+                      checked={rememberShipping}
+                      onChange={(e) => setRememberShipping(e.target.checked)}
+                      className="h-4 w-4 rounded border-slate-300 text-slate-700 focus:ring-slate-400"
+                    />
+                    <label htmlFor="rememberShipping" className="text-sm text-slate-700">
+                      Remember shipping details for next time
+                    </label>
                   </div>
                 </CardContent>
               </Card>

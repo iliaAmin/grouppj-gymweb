@@ -19,9 +19,12 @@ interface NewProduct {
   stock?: 'in' | 'out';
 }
 
+type AdminTab = 'dashboard' | 'products' | 'orders' | 'customers';
+
 export function AdminPage() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, users, setAdmin } = useAuth();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   const [form, setForm] = useState<NewProduct>({
     name: '',
     description: '',
@@ -38,6 +41,7 @@ export function AdminPage() {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [productSearch, setProductSearch] = useState('');
   const [orderSearch, setOrderSearch] = useState('');
+  const [customerSearch, setCustomerSearch] = useState('');
 
   useEffect(() => {
     if (!user || !isAdmin) {
@@ -64,6 +68,19 @@ export function AdminPage() {
     o.customerEmail?.toLowerCase().includes(orderSearch.toLowerCase()) ||
     o.id.toLowerCase().includes(orderSearch.toLowerCase())
   );
+
+  const filteredCustomers = users.filter((u) =>
+    u.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
+    u.email.toLowerCase().includes(customerSearch.toLowerCase())
+  );
+
+  const dashboardCounts = {
+    totalProducts: products.length,
+    totalOrders: orders.length,
+    pendingOrders: orders.filter((o) => o.status === 'pending').length,
+    totalRevenue: orders.reduce((sum, o) => sum + o.total, 0),
+    totalCustomers: users.length,
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -128,279 +145,359 @@ export function AdminPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-4">Admin panel</h1>
-
-      {/* Dashboard Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-blue-100 p-4 rounded-lg">
-          <h3 className="text-lg font-semibold">Total Products</h3>
-          <p className="text-2xl font-bold">{products.length}</p>
-        </div>
-        <div className="bg-green-100 p-4 rounded-lg">
-          <h3 className="text-lg font-semibold">Total Orders</h3>
-          <p className="text-2xl font-bold">{orders.length}</p>
-        </div>
-        <div className="bg-yellow-100 p-4 rounded-lg">
-          <h3 className="text-lg font-semibold">Pending Orders</h3>
-          <p className="text-2xl font-bold">{orders.filter(o => o.status === 'pending').length}</p>
-        </div>
-        <div className="bg-purple-100 p-4 rounded-lg">
-          <h3 className="text-lg font-semibold">Total Revenue</h3>
-          <p className="text-2xl font-bold">${orders.reduce((sum, o) => sum + o.total, 0).toFixed(2)}</p>
-        </div>
-      </div>
-
-      {message && <p className="mb-4 text-green-600">{message}</p>}
-      {csvError && <p className="mb-4 text-red-600">{csvError}</p>}
-      <div className="mb-6">
-        <label className="font-semibold">Import CSV</label>
-        <p className="text-sm text-gray-600 mb-2">CSV format: name,description,price,category,image,rating,stock</p>
-        <input
-          type="file"
-          accept=".csv"
-          disabled={csvLoading}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) parseCsv(file);
-            e.target.value = '';
-          }}
-          className="block mt-1"
-        />
-        {csvLoading && <p className="text-blue-600 mt-2">Importing products...</p>}
-      </div>
-      <form onSubmit={handleSubmit} className="space-y-4 max-w-xl">
-        <div>
-          <Label htmlFor="name">Name</Label>
-          <Input id="name" name="name" value={form.name} onChange={handleChange} required />
-        </div>
-        <div>
-          <Label htmlFor="description">Description</Label>
-          <Textarea
-            id="description"
-            name="description"
-            value={form.description}
-            onChange={handleChange}
-            required
-          />
-        </div>
-        <div className="flex gap-4">
-          <div>
-            <Label htmlFor="price">Price</Label>
-            <Input
-              id="price"
-              name="price"
-              type="number"
-              value={form.price}
-              onChange={handleChange}
-              required
-            />
+    <div className="min-h-screen bg-slate-100 py-8">
+      <div className="mx-auto flex max-w-[1400px] flex-col gap-6 px-4 sm:px-6 lg:flex-row">
+        <aside className="w-full max-w-[260px] rounded-[32px] border border-slate-200 bg-white p-6 shadow-lg">
+          <div className="mb-8">
+            <h1 className="text-xl font-semibold mb-2">Admin dashboard</h1>
+            <p className="text-sm text-slate-300">Manage products, customers, and orders in one place.</p>
           </div>
-          <div>
-            <Label htmlFor="rating">Rating</Label>
-            <Input
-              id="rating"
-              name="rating"
-              type="number"
-              step="0.1"
-              value={form.rating}
-              onChange={handleChange}
-            />
+          <nav className="space-y-3">
+            {(['dashboard', 'products', 'orders', 'customers'] as AdminTab[]).map((tab) => (
+              <button
+                key={tab}
+                className={`w-full rounded-3xl px-4 py-4 text-left text-sm font-semibold transition ${
+                  activeTab === tab
+                    ? 'bg-slate-950 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab === 'dashboard'
+                  ? 'Dashboard'
+                  : tab === 'products'
+                  ? 'Products'
+                  : tab === 'orders'
+                  ? 'Orders'
+                  : 'Customers'}
+              </button>
+            ))}
+          </nav>
+        </aside>
+
+        <main className="flex-1">
+          <div className="mb-6 rounded-[32px] bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.2em] text-slate-500">Admin panel</p>
+                <h1 className="mt-2 text-3xl font-semibold text-slate-950">Gym shop dashboard</h1>
+                <p className="mt-2 text-sm text-slate-500">Manage orders, customers, and inventory with clarity.</p>
+              </div>
+              <div className="flex flex-wrap gap-3 text-sm">
+                <span className="rounded-full bg-slate-100 px-3 py-2 text-slate-700">Role: {isAdmin ? 'Admin' : 'User'}</span>
+                <span className="rounded-full bg-slate-100 px-3 py-2 text-slate-700">Customers: {dashboardCounts.totalCustomers}</span>
+              </div>
+            </div>
           </div>
-        </div>
-        <div>
-          <Label htmlFor="category">Category</Label>
-          <Input id="category" name="category" value={form.category} onChange={handleChange} />
-        </div>
-        <div>
-          <Label htmlFor="stock">Stock status</Label>
-          <Select value={form.stock} onValueChange={(v: string) => setForm(f => ({ ...f, stock: v as 'in' | 'out' }))}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Stock" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="in">In stock</SelectItem>
-              <SelectItem value="out">Out of stock</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="image">Image URL</Label>
-          <Input id="image" name="image" value={form.image} onChange={handleChange} />
-        </div>
-        <Button type="submit">{editingId ? 'Update product' : 'Add product'}</Button>
-      </form>
 
-      {/* existing products list */}
-      <div className="mt-12">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">Existing products</h2>
-          <Input
-            placeholder="Search products..."
-            value={productSearch}
-            onChange={(e) => setProductSearch(e.target.value)}
-            className="max-w-xs"
-          />
-        </div>
-        {filteredProducts.length === 0 ? (
-          <p>No products found.</p>
-        ) : (
-          <table className="w-full table-auto border">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="p-2 text-left">Name</th>
-                <th className="p-2 text-left">Price</th>
-                <th className="p-2 text-left">Category</th>
-                <th className="p-2 text-left">Stock</th>
-                <th className="p-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredProducts.map((p) => (
-                <tr key={p.id} className="border-t">
-                  <td className="p-2">{p.name}</td>
-                  <td className="p-2">${p.price}</td>
-                  <td className="p-2">{p.category}</td>
-                  <td className="p-2">
-                    {p.stock === 'in' || p.stock === true ? 'In' : 'Out'}
-                  </td>
-                  <td className="p-2 flex gap-2">
-                    <button
-                      className="text-sm text-blue-600"
-                      onClick={() => {
-                        setEditingId(p.id as string);
-                        setForm({
-                          name: p.name || '',
-                          description: p.description || '',
-                          price: p.price || 0,
-                          category: p.category || '',
-                          image: p.image || '',
-                          rating: p.rating || 0,
-                          stock: (p.stock === 'in' || p.stock === true) ? 'in' : 'out',
-                        });
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="text-sm text-green-600"
-                      onClick={() => p.id && toggleStock(p.id as string)}
-                    >
-                      Toggle Stock
-                    </button>
-                    <button
-                      className="text-sm text-red-600"
-                      onClick={() => p.id && deleteProduct(p.id as string)}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+          {message && <p className="mb-4 rounded-xl bg-emerald-100 px-4 py-3 text-emerald-700">{message}</p>}
+          {csvError && <p className="mb-4 rounded-xl bg-rose-100 px-4 py-3 text-rose-700">{csvError}</p>}
 
-      {/* Orders management */}
-      <div className="mt-12">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">Orders Management</h2>
-          <Input
-            placeholder="Search orders..."
-            value={orderSearch}
-            onChange={(e) => setOrderSearch(e.target.value)}
-            className="max-w-xs"
-          />
-        </div>
-        {filteredOrders.length === 0 ? (
-          <p>No orders found.</p>
-        ) : (
-          <table className="w-full table-auto border">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="p-2 text-left">Order ID</th>
-                <th className="p-2 text-left">Customer</th>
-                <th className="p-2 text-left">Total</th>
-                <th className="p-2 text-left">Status</th>
-                <th className="p-2 text-left">Date</th>
-                <th className="p-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredOrders.map((order) => (
-                <tr key={order.id} className="border-t">
-                  <td className="p-2">{order.id.slice(-8)}</td>
-                  <td className="p-2">{order.customerName}</td>
-                  <td className="p-2">${order.total.toFixed(2)}</td>
-                  <td className="p-2">
-                    <Select
-                      value={order.status}
-                      onValueChange={(value: string) => updateOrderStatus(order.id, value as any)}
-                    >
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
+          {activeTab === 'dashboard' && (
+            <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-4">
+              <div className="rounded-3xl bg-white p-5 shadow-sm">
+                <p className="text-sm uppercase text-slate-500">Total products</p>
+                <p className="mt-4 text-3xl font-semibold text-slate-900">{dashboardCounts.totalProducts}</p>
+              </div>
+              <div className="rounded-3xl bg-white p-5 shadow-sm">
+                <p className="text-sm uppercase text-slate-500">Total orders</p>
+                <p className="mt-4 text-3xl font-semibold text-slate-900">{dashboardCounts.totalOrders}</p>
+              </div>
+              <div className="rounded-3xl bg-white p-5 shadow-sm">
+                <p className="text-sm uppercase text-slate-500">Pending orders</p>
+                <p className="mt-4 text-3xl font-semibold text-slate-900">{dashboardCounts.pendingOrders}</p>
+              </div>
+              <div className="rounded-3xl bg-white p-5 shadow-sm">
+                <p className="text-sm uppercase text-slate-500">Total revenue</p>
+                <p className="mt-4 text-3xl font-semibold text-slate-900">${dashboardCounts.totalRevenue.toFixed(2)}</p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'products' && (
+            <section className="space-y-6">
+              <div className="rounded-3xl bg-white p-6 shadow-sm">
+                <h2 className="text-xl font-semibold mb-4">Products management</h2>
+                <div className="mb-6">
+                  <label className="font-semibold">Import CSV</label>
+                  <p className="text-sm text-slate-500 mb-2">CSV format: name,description,price,category,image,rating,stock</p>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    disabled={csvLoading}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) parseCsv(file);
+                      e.target.value = '';
+                    }}
+                    className="block w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3"
+                  />
+                  {csvLoading && <p className="mt-2 text-sm text-slate-600">Importing products...</p>}
+                </div>
+                <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-3">
+                    <Label htmlFor="name">Name</Label>
+                    <Input id="name" name="name" value={form.name} onChange={handleChange} required />
+                  </div>
+                  <div className="space-y-3">
+                    <Label htmlFor="price">Price</Label>
+                    <Input id="price" name="price" type="number" value={form.price} onChange={handleChange} required />
+                  </div>
+                  <div className="space-y-3 md:col-span-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea id="description" name="description" value={form.description} onChange={handleChange} required />
+                  </div>
+                  <div className="space-y-3">
+                    <Label htmlFor="category">Category</Label>
+                    <Input id="category" name="category" value={form.category} onChange={handleChange} />
+                  </div>
+                  <div className="space-y-3">
+                    <Label htmlFor="rating">Rating</Label>
+                    <Input id="rating" name="rating" type="number" step="0.1" value={form.rating} onChange={handleChange} />
+                  </div>
+                  <div className="space-y-3">
+                    <Label htmlFor="stock">Stock</Label>
+                    <Select value={form.stock} onValueChange={(v: string) => setForm((f) => ({ ...f, stock: v as 'in' | 'out' }))}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Stock" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="processing">Processing</SelectItem>
-                        <SelectItem value="shipped">Shipped</SelectItem>
-                        <SelectItem value="delivered">Delivered</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                        <SelectItem value="in">In stock</SelectItem>
+                        <SelectItem value="out">Out of stock</SelectItem>
                       </SelectContent>
                     </Select>
-                  </td>
-                  <td className="p-2">{order.createdAt.toLocaleDateString()}</td>
-                  <td className="p-2">
-                    <button
-                      className="text-sm text-blue-600 mr-2"
-                      onClick={() => setSelectedOrder(order)}
-                    >
-                      View Details
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+                  </div>
+                  <div className="space-y-3 md:col-span-2">
+                    <Label htmlFor="image">Image URL</Label>
+                    <Input id="image" name="image" value={form.image} onChange={handleChange} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Button type="submit">{editingId ? 'Update product' : 'Add product'}</Button>
+                  </div>
+                </form>
+              </div>
 
-      {/* Order Details */}
-      {selectedOrder && (
-        <div className="mt-8 p-4 border rounded-lg bg-gray-50">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">Order Details - {selectedOrder.id.slice(-8)}</h3>
-            <button
-              className="text-red-600"
-              onClick={() => setSelectedOrder(null)}
-            >
-              Close
-            </button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <p><strong>Customer:</strong> {selectedOrder.customerName}</p>
-              <p><strong>Email:</strong> {selectedOrder.customerEmail}</p>
-              <p><strong>Shipping Address:</strong> {selectedOrder.shippingAddress}</p>
-            </div>
-            <div>
-              <p><strong>Status:</strong> {selectedOrder.status}</p>
-              <p><strong>Total:</strong> ${selectedOrder.total.toFixed(2)}</p>
-              <p><strong>Created:</strong> {selectedOrder.createdAt.toLocaleString()}</p>
-              <p><strong>Updated:</strong> {selectedOrder.updatedAt.toLocaleString()}</p>
-            </div>
-          </div>
-          <h4 className="font-semibold mb-2">Items:</h4>
-          <ul className="list-disc list-inside">
-            {selectedOrder.items.map((item: any, index: number) => (
-              <li key={index}>
-                {item.name} - Quantity: {item.quantity} - Price: ${item.price}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+              <div className="rounded-3xl bg-white p-6 shadow-sm">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <h2 className="text-xl font-semibold">Existing products</h2>
+                  <Input
+                    placeholder="Search products..."
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    className="max-w-xs"
+                  />
+                </div>
+                {filteredProducts.length === 0 ? (
+                  <p className="mt-4 text-slate-600">No products found.</p>
+                ) : (
+                  <div className="mt-4 overflow-x-auto">
+                    <table className="min-w-full divide-y divide-slate-200 text-sm">
+                      <thead className="bg-slate-50 text-slate-500">
+                        <tr>
+                          <th className="px-4 py-3 text-left">Name</th>
+                          <th className="px-4 py-3 text-left">Price</th>
+                          <th className="px-4 py-3 text-left">Category</th>
+                          <th className="px-4 py-3 text-left">Stock</th>
+                          <th className="px-4 py-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 bg-white">
+                        {filteredProducts.map((p) => (
+                          <tr key={p.id}>
+                            <td className="px-4 py-3">{p.name}</td>
+                            <td className="px-4 py-3">${p.price}</td>
+                            <td className="px-4 py-3">{p.category}</td>
+                            <td className="px-4 py-3">{p.stock === 'in' || p.stock === true ? 'In stock' : 'Out of stock'}</td>
+                            <td className="px-4 py-3 text-right space-x-2">
+                              <button
+                                className="text-blue-600 hover:underline"
+                                onClick={() => {
+                                  setEditingId(p.id as string);
+                                  setForm({
+                                    name: p.name || '',
+                                    description: p.description || '',
+                                    price: p.price || 0,
+                                    category: p.category || '',
+                                    image: p.image || '',
+                                    rating: p.rating || 0,
+                                    stock: p.stock === 'out' ? 'out' : 'in',
+                                  });
+                                }}
+                              >
+                                Edit
+                              </button>
+                              <button className="text-emerald-600 hover:underline" onClick={() => p.id && toggleStock(p.id as string)}>
+                                Toggle Stock
+                              </button>
+                              <button className="text-rose-600 hover:underline" onClick={() => p.id && deleteProduct(p.id as string)}>
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+
+          {activeTab === 'orders' && (
+            <section className="space-y-6">
+              <div className="rounded-3xl bg-white p-6 shadow-sm">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <h2 className="text-xl font-semibold">Orders management</h2>
+                  <Input
+                    placeholder="Search orders..."
+                    value={orderSearch}
+                    onChange={(e) => setOrderSearch(e.target.value)}
+                    className="max-w-xs"
+                  />
+                </div>
+                {filteredOrders.length === 0 ? (
+                  <p className="mt-4 text-slate-600">No orders found.</p>
+                ) : (
+                  <div className="mt-4 overflow-x-auto">
+                    <table className="min-w-full divide-y divide-slate-200 text-sm">
+                      <thead className="bg-slate-50 text-slate-500">
+                        <tr>
+                          <th className="px-4 py-3 text-left">Order</th>
+                          <th className="px-4 py-3 text-left">Customer</th>
+                          <th className="px-4 py-3 text-left">Total</th>
+                          <th className="px-4 py-3 text-left">Status</th>
+                          <th className="px-4 py-3 text-left">Date</th>
+                          <th className="px-4 py-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 bg-white">
+                        {filteredOrders.map((order) => (
+                          <tr key={order.id}>
+                            <td className="px-4 py-3">{order.id.slice(-8)}</td>
+                            <td className="px-4 py-3">{order.customerName}</td>
+                            <td className="px-4 py-3">${order.total.toFixed(2)}</td>
+                            <td className="px-4 py-3">
+                              <Select
+                                value={order.status}
+                                onValueChange={(value: string) => updateOrderStatus(order.id, value as any)}
+                              >
+                                <SelectTrigger className="w-36">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="pending">Pending</SelectItem>
+                                  <SelectItem value="processing">Processing</SelectItem>
+                                  <SelectItem value="shipped">Shipped</SelectItem>
+                                  <SelectItem value="delivered">Delivered</SelectItem>
+                                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </td>
+                            <td className="px-4 py-3">{order.createdAt.toLocaleDateString()}</td>
+                            <td className="px-4 py-3 text-right">
+                              <button className="text-blue-600 hover:underline" onClick={() => setSelectedOrder(order)}>
+                                View details
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+              {selectedOrder && (
+                <div className="rounded-3xl bg-white p-6 shadow-sm">
+                  <div className="flex items-center justify-between gap-4 mb-4">
+                    <div>
+                      <h3 className="text-xl font-semibold">Order {selectedOrder.id.slice(-8)}</h3>
+                      <p className="text-slate-500">Customer: {selectedOrder.customerName}</p>
+                    </div>
+                    <button className="text-rose-600 hover:underline" onClick={() => setSelectedOrder(null)}>
+                      Close
+                    </button>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <p><span className="font-semibold">Email:</span> {selectedOrder.customerEmail}</p>
+                      <p><span className="font-semibold">Shipping address:</span> {selectedOrder.shippingAddress}</p>
+                      <p><span className="font-semibold">Status:</span> {selectedOrder.status}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <p><span className="font-semibold">Total:</span> ${selectedOrder.total.toFixed(2)}</p>
+                      <p><span className="font-semibold">Created:</span> {selectedOrder.createdAt.toLocaleString()}</p>
+                      <p><span className="font-semibold">Updated:</span> {selectedOrder.updatedAt.toLocaleString()}</p>
+                    </div>
+                  </div>
+                  <div className="mt-6">
+                    <h4 className="text-lg font-semibold mb-2">Items</h4>
+                    <ul className="space-y-2">
+                      {selectedOrder.items.map((item: any, index: number) => (
+                        <li key={index} className="rounded-2xl border border-slate-200 p-4">
+                          <p className="font-semibold">{item.name}</p>
+                          <p className="text-sm text-slate-600">Quantity: {item.quantity} · Price: ${item.price}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {activeTab === 'customers' && (
+            <section className="space-y-6">
+              <div className="rounded-3xl bg-white p-6 shadow-sm">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold">Customers</h2>
+                    <p className="text-slate-500">View users, assign admin privileges, and inspect customer accounts.</p>
+                  </div>
+                  <Input
+                    placeholder="Search customers..."
+                    value={customerSearch}
+                    onChange={(e) => setCustomerSearch(e.target.value)}
+                    className="max-w-xs"
+                  />
+                </div>
+                {filteredCustomers.length === 0 ? (
+                  <p className="mt-4 text-slate-600">No customers found.</p>
+                ) : (
+                  <div className="mt-4 overflow-x-auto">
+                    <table className="min-w-full divide-y divide-slate-200 text-sm">
+                      <thead className="bg-slate-50 text-slate-500">
+                        <tr>
+                          <th className="px-4 py-3 text-left">Name</th>
+                          <th className="px-4 py-3 text-left">Email</th>
+                          <th className="px-4 py-3 text-left">Role</th>
+                          <th className="px-4 py-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 bg-white">
+                        {filteredCustomers.map((customer) => (
+                          <tr key={customer.uid}>
+                            <td className="px-4 py-3">{customer.name}</td>
+                            <td className="px-4 py-3">{customer.email}</td>
+                            <td className="px-4 py-3">{customer.isAdmin ? 'Admin' : 'Customer'}</td>
+                            <td className="px-4 py-3 text-right space-x-2">
+                              <button
+                                className="text-blue-600 hover:underline"
+                                onClick={() => setAdmin(customer.uid, !customer.isAdmin)}
+                              >
+                                {customer.isAdmin ? 'Revoke admin' : 'Make admin'}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+        </main>
+      </div>
     </div>
   );
 }
