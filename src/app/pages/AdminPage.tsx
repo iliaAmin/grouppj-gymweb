@@ -17,6 +17,7 @@ interface NewProduct {
   image?: string;
   rating?: number;
   stock?: 'in' | 'out';
+  tags?: string[];
 }
 
 type AdminTab = 'dashboard' | 'products' | 'orders' | 'customers';
@@ -33,13 +34,18 @@ export function AdminPage() {
     image: '',
     rating: 0,
     stock: 'in',
+    tags: [],
   });
   const [message, setMessage] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [csvError, setCsvError] = useState('');
+  const [csvFeedback, setCsvFeedback] = useState<string[]>([]);
   const [csvLoading, setCsvLoading] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [productSearch, setProductSearch] = useState('');
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [bulkCategory, setBulkCategory] = useState('');
+  const [tagString, setTagString] = useState('');
   const [orderSearch, setOrderSearch] = useState('');
   const [customerSearch, setCustomerSearch] = useState('');
 
@@ -52,7 +58,17 @@ export function AdminPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: name === 'price' || name === 'rating' ? Number(value) : value }));
+    setForm((f) => ({
+      ...f,
+      [name]: name === 'price' || name === 'rating'
+        ? Number(value)
+        : name === 'tags'
+          ? value.split(',').map((tag) => tag.trim()).filter(Boolean)
+          : value,
+    }));
+    if (name === 'tags') {
+      setTagString(value);
+    }
   };
 
   const { products, addProduct, updateProduct, deleteProduct, toggleStock } = useProducts();
@@ -74,25 +90,86 @@ export function AdminPage() {
     u.email.toLowerCase().includes(customerSearch.toLowerCase())
   );
 
+  const productCategories = Array.from(
+    new Set(products.map((p) => p.category || '').filter(Boolean))
+  );
+
+  const productTags = Array.from(
+    new Set(products.flatMap((p) => p.tags || []).filter(Boolean))
+  );
+
+  const categoryCounts = products.reduce<Record<string, number>>((acc, p) => {
+    if (p.category) acc[p.category] = (acc[p.category] || 0) + 1;
+    return acc;
+  }, {});
+
   const dashboardCounts = {
     totalProducts: products.length,
     totalOrders: orders.length,
     pendingOrders: orders.filter((o) => o.status === 'pending').length,
     totalRevenue: orders.reduce((sum, o) => sum + o.total, 0),
     totalCustomers: users.length,
+    totalCategories: productCategories.length,
+  };
+
+  const handleSelectProduct = (productId: string) => {
+    setSelectedProductIds((prev) =>
+      prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]
+    );
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedProductIds.length === filteredProducts.length) {
+      setSelectedProductIds([]);
+    } else {
+      setSelectedProductIds(filteredProducts.map((p) => p.id as string));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!selectedProductIds.length) return;
+    try {
+      await Promise.all(selectedProductIds.map((id) => deleteProduct(id)));
+      setMessage(`${selectedProductIds.length} products deleted`);
+      setSelectedProductIds([]);
+    } catch (err) {
+      console.error(err);
+      setMessage('Failed to delete selected products');
+    }
+  };
+
+  const handleBulkUpdateCategory = async () => {
+    if (!bulkCategory || !selectedProductIds.length) return;
+    try {
+      await Promise.all(
+        selectedProductIds.map((id) => updateProduct(id, { category: bulkCategory }))
+      );
+      setMessage(`${selectedProductIds.length} products updated`);
+      setSelectedProductIds([]);
+      setBulkCategory('');
+    } catch (err) {
+      console.error(err);
+      setMessage('Failed to update category for selected products');
+    }
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     try {
+      const productData = {
+        ...form,
+        tags: form.tags?.map((tag) => tag.trim()).filter(Boolean),
+      };
+
       if (editingId) {
-        await updateProduct(editingId, form as any);
+        await updateProduct(editingId, productData as any);
         setMessage('Product updated');
       } else {
-        await addProduct(form as any);
+        await addProduct(productData as any);
         setMessage('Product added successfully');
       }
-      setForm({ name: '', description: '', price: 0, category: '', image: '', rating: 0 });
+      setForm({ name: '', description: '', price: 0, category: '', image: '', rating: 0, stock: 'in', tags: [] });
+      setTagString('');
       setEditingId(null);
     } catch (err) {
       console.error(err);
@@ -102,40 +179,71 @@ export function AdminPage() {
 
   const parseCsv = async (file: File) => {
     setCsvError('');
+    setCsvFeedback([]);
     setCsvLoading(true);
     try {
       const text = await file.text();
-      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      const lines = text.split(/\r?\n/).filter((l) => l.trim());
       if (lines.length < 2) {
         throw new Error('CSV must contain header and at least one row');
       }
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-      const required = ['name','description','price','category'];
-      required.forEach(r => {
-        if (!headers.includes(r)) throw new Error(`Missing column: ${r}`);
-      });
-      const rowProducts: NewProduct[] = lines.slice(1).map(line => {
+
+      const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
+      const required = ['name', 'description', 'price', 'category'];
+      const missingColumns = required.filter((r) => !headers.includes(r));
+      if (missingColumns.length) {
+        throw new Error(`Missing columns: ${missingColumns.join(', ')}`);
+      }
+
+      const validRows: NewProduct[] = [];
+      const rowErrors: string[] = [];
+
+      lines.slice(1).forEach((line, index) => {
         const values = line.split(',');
         const obj: any = {};
-        headers.forEach((h,i) => {
+        headers.forEach((h, i) => {
           obj[h] = values[i]?.trim();
         });
-        return {
+
+        const item: NewProduct = {
           name: obj.name || '',
           description: obj.description || '',
-          price: Number(obj.price) || 0,
+          price: Number(obj.price),
           category: obj.category || '',
           image: obj.image || '',
           rating: Number(obj.rating) || 0,
           stock: obj.stock === 'out' ? 'out' : 'in',
+          tags: obj.tags ? obj.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean) : [],
         };
+
+        const errors: string[] = [];
+        if (!item.name) errors.push('missing name');
+        if (!item.description) errors.push('missing description');
+        if (!item.category) errors.push('missing category');
+        if (!item.price || Number.isNaN(item.price)) errors.push('invalid price');
+
+        if (errors.length) {
+          rowErrors.push(`Row ${index + 2}: ${errors.join(', ')}`);
+        } else {
+          validRows.push(item);
+        }
       });
 
-      // upload sequentially
-      for (const prod of rowProducts) {
+      if (!validRows.length) {
+        throw new Error('No valid rows found in CSV. ' + rowErrors.join(' | '));
+      }
+
+      for (const prod of validRows) {
         await addProduct(prod as any);
       }
-      setMessage(`${rowProducts.length} products imported`);
+
+      const successMessage = `${validRows.length} products imported`;
+      if (rowErrors.length) {
+        setCsvFeedback(rowErrors);
+        setMessage(`${successMessage}. ${rowErrors.length} row(s) skipped.`);
+      } else {
+        setMessage(successMessage);
+      }
     } catch (err: any) {
       console.error(err);
       setCsvError(err.message || 'Failed to parse CSV');
@@ -192,26 +300,52 @@ export function AdminPage() {
 
           {message && <p className="mb-4 rounded-xl bg-emerald-100 px-4 py-3 text-emerald-700">{message}</p>}
           {csvError && <p className="mb-4 rounded-xl bg-rose-100 px-4 py-3 text-rose-700">{csvError}</p>}
+          {csvFeedback.length > 0 && (
+            <div className="mb-4 rounded-3xl bg-card p-4 shadow-sm">
+              <p className="mb-2 text-sm font-semibold">CSV import warnings</p>
+              <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
+                {csvFeedback.map((feedback, idx) => (
+                  <li key={idx}>{feedback}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {activeTab === 'dashboard' && (
-            <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-4">
-              <div className="rounded-3xl bg-card p-5 shadow-sm">
-                <p className="text-sm uppercase text-muted-foreground">Total products</p>
-                <p className="mt-4 text-3xl font-semibold text-foreground">{dashboardCounts.totalProducts}</p>
+            <>
+              <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-4">
+                <div className="rounded-3xl bg-card p-5 shadow-sm">
+                  <p className="text-sm uppercase text-muted-foreground">Total products</p>
+                  <p className="mt-4 text-3xl font-semibold text-foreground">{dashboardCounts.totalProducts}</p>
+                </div>
+                <div className="rounded-3xl bg-card p-5 shadow-sm">
+                  <p className="text-sm uppercase text-muted-foreground">Total orders</p>
+                  <p className="mt-4 text-3xl font-semibold text-foreground">{dashboardCounts.totalOrders}</p>
+                </div>
+                <div className="rounded-3xl bg-card p-5 shadow-sm">
+                  <p className="text-sm uppercase text-muted-foreground">Pending orders</p>
+                  <p className="mt-4 text-3xl font-semibold text-foreground">{dashboardCounts.pendingOrders}</p>
+                </div>
+                <div className="rounded-3xl bg-card p-5 shadow-sm">
+                  <p className="text-sm uppercase text-muted-foreground">Total revenue</p>
+                  <p className="mt-4 text-3xl font-semibold text-foreground">${dashboardCounts.totalRevenue.toFixed(2)}</p>
+                </div>
               </div>
               <div className="rounded-3xl bg-card p-5 shadow-sm">
-                <p className="text-sm uppercase text-muted-foreground">Total orders</p>
-                <p className="mt-4 text-3xl font-semibold text-foreground">{dashboardCounts.totalOrders}</p>
+                <p className="text-sm uppercase text-muted-foreground">Product categories</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {productCategories.length ? (
+                    productCategories.map((category) => (
+                      <span key={category} className="rounded-full bg-muted px-3 py-2 text-sm text-foreground">
+                        {category} ({categoryCounts[category]})
+                      </span>
+                    ))
+                  ) : (
+                    <span className="rounded-full bg-muted px-3 py-2 text-sm text-foreground">No categories yet</span>
+                  )}
+                </div>
               </div>
-              <div className="rounded-3xl bg-card p-5 shadow-sm">
-                <p className="text-sm uppercase text-muted-foreground">Pending orders</p>
-                <p className="mt-4 text-3xl font-semibold text-foreground">{dashboardCounts.pendingOrders}</p>
-              </div>
-              <div className="rounded-3xl bg-card p-5 shadow-sm">
-                <p className="text-sm uppercase text-muted-foreground">Total revenue</p>
-                <p className="mt-4 text-3xl font-semibold text-foreground">${dashboardCounts.totalRevenue.toFixed(2)}</p>
-              </div>
-            </div>
+            </>
           )}
 
           {activeTab === 'products' && (
@@ -249,7 +383,25 @@ export function AdminPage() {
                   </div>
                   <div className="space-y-3">
                     <Label htmlFor="category">Category</Label>
-                    <Input id="category" name="category" value={form.category} onChange={handleChange} />
+                    <Input list="category-options" id="category" name="category" value={form.category} onChange={handleChange} />
+                    <datalist id="category-options">
+                      {productCategories.map((category) => (
+                        <option key={category} value={category} />
+                      ))}
+                    </datalist>
+                  </div>
+                  <div className="space-y-3">
+                    <Label htmlFor="tags">Tags</Label>
+                    <Input
+                      id="tags"
+                      name="tags"
+                      value={tagString || form.tags?.join(', ') || ''}
+                      onChange={(e) => {
+                        setTagString(e.target.value);
+                        handleChange(e);
+                      }}
+                      placeholder="e.g. cardio, strength, recovery"
+                    />
                   </div>
                   <div className="space-y-3">
                     <Label htmlFor="rating">Rating</Label>
@@ -279,13 +431,36 @@ export function AdminPage() {
 
               <div className="rounded-3xl bg-card p-6 shadow-sm">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <h2 className="text-xl font-semibold">Existing products</h2>
+                  <div>
+                    <h2 className="text-xl font-semibold">Existing products</h2>
+                    <p className="text-sm text-muted-foreground">Select products to update category or delete in bulk.</p>
+                  </div>
                   <Input
                     placeholder="Search products..."
                     value={productSearch}
                     onChange={(e) => setProductSearch(e.target.value)}
                     className="max-w-xs"
                   />
+                </div>
+                <div className="mt-4 grid gap-4 md:grid-cols-[1fr_auto]">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Input
+                      placeholder="Bulk category"
+                      value={bulkCategory}
+                      onChange={(e) => setBulkCategory(e.target.value)}
+                      className="max-w-xs"
+                      list="category-options"
+                    />
+                    <Button variant="secondary" onClick={handleBulkUpdateCategory} disabled={!bulkCategory || !selectedProductIds.length}>
+                      Apply category
+                    </Button>
+                    <Button variant="destructive" onClick={handleBulkDelete} disabled={!selectedProductIds.length}>
+                      Delete selected
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedProductIds.length} selected / {filteredProducts.length} visible
+                  </p>
                 </div>
                 {filteredProducts.length === 0 ? (
                   <p className="mt-4 text-muted-foreground">No products found.</p>
@@ -294,9 +469,18 @@ export function AdminPage() {
                     <table className="min-w-full divide-y divide-border text-sm">
                       <thead className="bg-muted text-muted-foreground">
                         <tr>
+                          <th className="px-4 py-3 text-left">
+                            <input
+                              type="checkbox"
+                              checked={selectedProductIds.length === filteredProducts.length && filteredProducts.length > 0}
+                              onChange={handleToggleSelectAll}
+                              className="h-4 w-4 rounded border border-border bg-background text-primary focus:ring-primary"
+                            />
+                          </th>
                           <th className="px-4 py-3 text-left">Name</th>
                           <th className="px-4 py-3 text-left">Price</th>
                           <th className="px-4 py-3 text-left">Category</th>
+                          <th className="px-4 py-3 text-left">Tags</th>
                           <th className="px-4 py-3 text-left">Stock</th>
                           <th className="px-4 py-3 text-right">Actions</th>
                         </tr>
@@ -304,9 +488,20 @@ export function AdminPage() {
                       <tbody className="divide-y divide-border bg-card">
                         {filteredProducts.map((p) => (
                           <tr key={p.id}>
+                            <td className="px-4 py-3">
+                              <input
+                                type="checkbox"
+                                checked={selectedProductIds.includes(p.id as string)}
+                                onChange={() => p.id && handleSelectProduct(p.id as string)}
+                                className="h-4 w-4 rounded border border-border bg-background text-primary focus:ring-primary"
+                              />
+                            </td>
                             <td className="px-4 py-3">{p.name}</td>
                             <td className="px-4 py-3">${p.price}</td>
                             <td className="px-4 py-3">{p.category}</td>
+                            <td className="px-4 py-3">
+                              {p.tags?.length ? p.tags.join(', ') : <span className="text-muted-foreground">No tags</span>}
+                            </td>
                             <td className="px-4 py-3">{p.stock === 'in' || p.stock === true ? 'In stock' : 'Out of stock'}</td>
                             <td className="px-4 py-3 text-right space-x-2">
                               <button
@@ -321,7 +516,9 @@ export function AdminPage() {
                                     image: p.image || '',
                                     rating: p.rating || 0,
                                     stock: p.stock === 'out' ? 'out' : 'in',
+                                    tags: p.tags || [],
                                   });
+                                  setTagString(p.tags?.join(', ') || '');
                                 }}
                               >
                                 Edit
