@@ -36,6 +36,8 @@ export function AdminPage() {
   const [csvError, setCsvError] = useState('');
   const [csvLoading, setCsvLoading] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [productSearch, setProductSearch] = useState('');
+  const [orderSearch, setOrderSearch] = useState('');
 
   useEffect(() => {
     if (!user || !isAdmin) {
@@ -51,6 +53,17 @@ export function AdminPage() {
 
   const { products, addProduct, updateProduct, deleteProduct, toggleStock } = useProducts();
   const { orders, updateOrderStatus } = useOrders();
+
+  const filteredProducts = products.filter(p =>
+    p.name?.toLowerCase().includes(productSearch.toLowerCase()) ||
+    p.category?.toLowerCase().includes(productSearch.toLowerCase())
+  );
+
+  const filteredOrders = orders.filter(o =>
+    o.customerName?.toLowerCase().includes(orderSearch.toLowerCase()) ||
+    o.customerEmail?.toLowerCase().includes(orderSearch.toLowerCase()) ||
+    o.id.toLowerCase().includes(orderSearch.toLowerCase())
+  );
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -218,9 +231,17 @@ export function AdminPage() {
 
       {/* existing products list */}
       <div className="mt-12">
-        <h2 className="text-xl font-semibold mb-4">Existing products</h2>
-        {products.length === 0 ? (
-          <p>No products yet.</p>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Existing products</h2>
+          <Input
+            placeholder="Search products..."
+            value={productSearch}
+            onChange={(e) => setProductSearch(e.target.value)}
+            className="max-w-xs"
+          />
+        </div>
+        {filteredProducts.length === 0 ? (
+          <p>No products found.</p>
         ) : (
           <table className="w-full table-auto border">
             <thead>
@@ -233,7 +254,7 @@ export function AdminPage() {
               </tr>
             </thead>
             <tbody>
-              {products.map((p) => (
+              {filteredProducts.map((p) => (
                 <tr key={p.id} className="border-t">
                   <td className="p-2">{p.name}</td>
                   <td className="p-2">${p.price}</td>
@@ -281,9 +302,17 @@ export function AdminPage() {
 
       {/* Orders management */}
       <div className="mt-12">
-        <h2 className="text-xl font-semibold mb-4">Orders Management</h2>
-        {orders.length === 0 ? (
-          <p>No orders yet.</p>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Orders Management</h2>
+          <Input
+            placeholder="Search orders..."
+            value={orderSearch}
+            onChange={(e) => setOrderSearch(e.target.value)}
+            className="max-w-xs"
+          />
+        </div>
+        {filteredOrders.length === 0 ? (
+          <p>No orders found.</p>
         ) : (
           <table className="w-full table-auto border">
             <thead>
@@ -297,7 +326,7 @@ export function AdminPage() {
               </tr>
             </thead>
             <tbody>
-              {orders.map((order) => (
+              {filteredOrders.map((order) => (
                 <tr key={order.id} className="border-t">
                   <td className="p-2">{order.id.slice(-8)}</td>
                   <td className="p-2">{order.customerName}</td>
