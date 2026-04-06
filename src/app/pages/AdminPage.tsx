@@ -2,6 +2,7 @@ import { FormEvent, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { useProducts } from '../context/ProductsContext';
+import { useOrders } from '../context/OrderContext';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
@@ -34,6 +35,7 @@ export function AdminPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [csvError, setCsvError] = useState('');
   const [csvLoading, setCsvLoading] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
   useEffect(() => {
     if (!user || !isAdmin) {
@@ -48,6 +50,7 @@ export function AdminPage() {
   };
 
   const { products, addProduct, updateProduct, deleteProduct, toggleStock } = useProducts();
+  const { orders, updateOrderStatus } = useOrders();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -97,6 +100,7 @@ export function AdminPage() {
           stock: obj.stock === 'out' ? 'out' : 'in',
         };
       });
+
       // upload sequentially
       for (const prod of rowProducts) {
         await addProduct(prod as any);
@@ -113,6 +117,27 @@ export function AdminPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-4">Admin panel</h1>
+
+      {/* Dashboard Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="bg-blue-100 p-4 rounded-lg">
+          <h3 className="text-lg font-semibold">Total Products</h3>
+          <p className="text-2xl font-bold">{products.length}</p>
+        </div>
+        <div className="bg-green-100 p-4 rounded-lg">
+          <h3 className="text-lg font-semibold">Total Orders</h3>
+          <p className="text-2xl font-bold">{orders.length}</p>
+        </div>
+        <div className="bg-yellow-100 p-4 rounded-lg">
+          <h3 className="text-lg font-semibold">Pending Orders</h3>
+          <p className="text-2xl font-bold">{orders.filter(o => o.status === 'pending').length}</p>
+        </div>
+        <div className="bg-purple-100 p-4 rounded-lg">
+          <h3 className="text-lg font-semibold">Total Revenue</h3>
+          <p className="text-2xl font-bold">${orders.reduce((sum, o) => sum + o.total, 0).toFixed(2)}</p>
+        </div>
+      </div>
+
       {message && <p className="mb-4 text-green-600">{message}</p>}
       {csvError && <p className="mb-4 text-red-600">{csvError}</p>}
       <div className="mb-6">
@@ -253,6 +278,98 @@ export function AdminPage() {
           </table>
         )}
       </div>
+
+      {/* Orders management */}
+      <div className="mt-12">
+        <h2 className="text-xl font-semibold mb-4">Orders Management</h2>
+        {orders.length === 0 ? (
+          <p>No orders yet.</p>
+        ) : (
+          <table className="w-full table-auto border">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="p-2 text-left">Order ID</th>
+                <th className="p-2 text-left">Customer</th>
+                <th className="p-2 text-left">Total</th>
+                <th className="p-2 text-left">Status</th>
+                <th className="p-2 text-left">Date</th>
+                <th className="p-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((order) => (
+                <tr key={order.id} className="border-t">
+                  <td className="p-2">{order.id.slice(-8)}</td>
+                  <td className="p-2">{order.customerName}</td>
+                  <td className="p-2">${order.total.toFixed(2)}</td>
+                  <td className="p-2">
+                    <Select
+                      value={order.status}
+                      onValueChange={(value: string) => updateOrderStatus(order.id, value as any)}
+                    >
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="processing">Processing</SelectItem>
+                        <SelectItem value="shipped">Shipped</SelectItem>
+                        <SelectItem value="delivered">Delivered</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </td>
+                  <td className="p-2">{order.createdAt.toLocaleDateString()}</td>
+                  <td className="p-2">
+                    <button
+                      className="text-sm text-blue-600 mr-2"
+                      onClick={() => setSelectedOrder(order)}
+                    >
+                      View Details
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Order Details */}
+      {selectedOrder && (
+        <div className="mt-8 p-4 border rounded-lg bg-gray-50">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">Order Details - {selectedOrder.id.slice(-8)}</h3>
+            <button
+              className="text-red-600"
+              onClick={() => setSelectedOrder(null)}
+            >
+              Close
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <p><strong>Customer:</strong> {selectedOrder.customerName}</p>
+              <p><strong>Email:</strong> {selectedOrder.customerEmail}</p>
+              <p><strong>Shipping Address:</strong> {selectedOrder.shippingAddress}</p>
+            </div>
+            <div>
+              <p><strong>Status:</strong> {selectedOrder.status}</p>
+              <p><strong>Total:</strong> ${selectedOrder.total.toFixed(2)}</p>
+              <p><strong>Created:</strong> {selectedOrder.createdAt.toLocaleString()}</p>
+              <p><strong>Updated:</strong> {selectedOrder.updatedAt.toLocaleString()}</p>
+            </div>
+          </div>
+          <h4 className="font-semibold mb-2">Items:</h4>
+          <ul className="list-disc list-inside">
+            {selectedOrder.items.map((item: any, index: number) => (
+              <li key={index}>
+                {item.name} - Quantity: {item.quantity} - Price: ${item.price}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
