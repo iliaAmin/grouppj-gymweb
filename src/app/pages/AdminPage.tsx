@@ -145,12 +145,12 @@ export function AdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 py-8">
+    <div className="min-h-screen bg-background text-foreground py-8">
       <div className="mx-auto flex max-w-[1400px] flex-col gap-6 px-4 sm:px-6 lg:flex-row">
-        <aside className="w-full max-w-[260px] rounded-[32px] border border-slate-200 bg-white p-6 shadow-lg">
+        <aside className="w-full max-w-[260px] rounded-[32px] border border-border bg-card p-6 shadow-lg">
           <div className="mb-8">
             <h1 className="text-xl font-semibold mb-2">Admin dashboard</h1>
-            <p className="text-sm text-slate-300">Manage products, customers, and orders in one place.</p>
+            <p className="text-sm text-muted-foreground">Manage products, customers, and orders in one place.</p>
           </div>
           <nav className="space-y-3">
             {(['dashboard', 'products', 'orders', 'customers'] as AdminTab[]).map((tab) => (
@@ -158,8 +158,8 @@ export function AdminPage() {
                 key={tab}
                 className={`w-full rounded-3xl px-4 py-4 text-left text-sm font-semibold transition ${
                   activeTab === tab
-                    ? 'bg-slate-950 text-white shadow-sm'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'bg-muted text-foreground hover:bg-accent/10'
                 }`}
                 onClick={() => setActiveTab(tab)}
               >
@@ -176,16 +176,16 @@ export function AdminPage() {
         </aside>
 
         <main className="flex-1">
-          <div className="mb-6 rounded-[32px] bg-white p-6 shadow-sm">
+          <div className="mb-6 rounded-[32px] bg-card p-6 shadow-sm">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm uppercase tracking-[0.2em] text-slate-500">Admin panel</p>
-                <h1 className="mt-2 text-3xl font-semibold text-slate-950">Gym shop dashboard</h1>
-                <p className="mt-2 text-sm text-slate-500">Manage orders, customers, and inventory with clarity.</p>
+                <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground">Admin panel</p>
+                <h1 className="mt-2 text-3xl font-semibold text-foreground">Gym shop dashboard</h1>
+                <p className="mt-2 text-sm text-muted-foreground">Manage orders, customers, and inventory with clarity.</p>
               </div>
               <div className="flex flex-wrap gap-3 text-sm">
-                <span className="rounded-full bg-slate-100 px-3 py-2 text-slate-700">Role: {isAdmin ? 'Admin' : 'User'}</span>
-                <span className="rounded-full bg-slate-100 px-3 py-2 text-slate-700">Customers: {dashboardCounts.totalCustomers}</span>
+                <span className="rounded-full bg-muted px-3 py-2 text-foreground">Role: {isAdmin ? 'Admin' : 'User'}</span>
+                <span className="rounded-full bg-muted px-3 py-2 text-foreground">Customers: {dashboardCounts.totalCustomers}</span>
               </div>
             </div>
           </div>
@@ -195,32 +195,32 @@ export function AdminPage() {
 
           {activeTab === 'dashboard' && (
             <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-4">
-              <div className="rounded-3xl bg-white p-5 shadow-sm">
-                <p className="text-sm uppercase text-slate-500">Total products</p>
-                <p className="mt-4 text-3xl font-semibold text-slate-900">{dashboardCounts.totalProducts}</p>
+              <div className="rounded-3xl bg-card p-5 shadow-sm">
+                <p className="text-sm uppercase text-muted-foreground">Total products</p>
+                <p className="mt-4 text-3xl font-semibold text-foreground">{dashboardCounts.totalProducts}</p>
               </div>
-              <div className="rounded-3xl bg-white p-5 shadow-sm">
-                <p className="text-sm uppercase text-slate-500">Total orders</p>
-                <p className="mt-4 text-3xl font-semibold text-slate-900">{dashboardCounts.totalOrders}</p>
+              <div className="rounded-3xl bg-card p-5 shadow-sm">
+                <p className="text-sm uppercase text-muted-foreground">Total orders</p>
+                <p className="mt-4 text-3xl font-semibold text-foreground">{dashboardCounts.totalOrders}</p>
               </div>
-              <div className="rounded-3xl bg-white p-5 shadow-sm">
-                <p className="text-sm uppercase text-slate-500">Pending orders</p>
-                <p className="mt-4 text-3xl font-semibold text-slate-900">{dashboardCounts.pendingOrders}</p>
+              <div className="rounded-3xl bg-card p-5 shadow-sm">
+                <p className="text-sm uppercase text-muted-foreground">Pending orders</p>
+                <p className="mt-4 text-3xl font-semibold text-foreground">{dashboardCounts.pendingOrders}</p>
               </div>
-              <div className="rounded-3xl bg-white p-5 shadow-sm">
-                <p className="text-sm uppercase text-slate-500">Total revenue</p>
-                <p className="mt-4 text-3xl font-semibold text-slate-900">${dashboardCounts.totalRevenue.toFixed(2)}</p>
+              <div className="rounded-3xl bg-card p-5 shadow-sm">
+                <p className="text-sm uppercase text-muted-foreground">Total revenue</p>
+                <p className="mt-4 text-3xl font-semibold text-foreground">${dashboardCounts.totalRevenue.toFixed(2)}</p>
               </div>
             </div>
           )}
 
           {activeTab === 'products' && (
             <section className="space-y-6">
-              <div className="rounded-3xl bg-white p-6 shadow-sm">
+              <div className="rounded-3xl bg-card p-6 shadow-sm">
                 <h2 className="text-xl font-semibold mb-4">Products management</h2>
                 <div className="mb-6">
                   <label className="font-semibold">Import CSV</label>
-                  <p className="text-sm text-slate-500 mb-2">CSV format: name,description,price,category,image,rating,stock</p>
+                  <p className="text-sm text-muted-foreground mb-2">CSV format: name,description,price,category,image,rating,stock</p>
                   <input
                     type="file"
                     accept=".csv"
@@ -230,9 +230,9 @@ export function AdminPage() {
                       if (file) parseCsv(file);
                       e.target.value = '';
                     }}
-                    className="block w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3"
+                    className="block w-full rounded-2xl border border-border bg-background px-3 py-3"
                   />
-                  {csvLoading && <p className="mt-2 text-sm text-slate-600">Importing products...</p>}
+                  {csvLoading && <p className="mt-2 text-sm text-muted-foreground">Importing products...</p>}
                 </div>
                 <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-3">
@@ -277,7 +277,7 @@ export function AdminPage() {
                 </form>
               </div>
 
-              <div className="rounded-3xl bg-white p-6 shadow-sm">
+              <div className="rounded-3xl bg-card p-6 shadow-sm">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <h2 className="text-xl font-semibold">Existing products</h2>
                   <Input
@@ -288,11 +288,11 @@ export function AdminPage() {
                   />
                 </div>
                 {filteredProducts.length === 0 ? (
-                  <p className="mt-4 text-slate-600">No products found.</p>
+                  <p className="mt-4 text-muted-foreground">No products found.</p>
                 ) : (
                   <div className="mt-4 overflow-x-auto">
-                    <table className="min-w-full divide-y divide-slate-200 text-sm">
-                      <thead className="bg-slate-50 text-slate-500">
+                    <table className="min-w-full divide-y divide-border text-sm">
+                      <thead className="bg-muted text-muted-foreground">
                         <tr>
                           <th className="px-4 py-3 text-left">Name</th>
                           <th className="px-4 py-3 text-left">Price</th>
@@ -301,7 +301,7 @@ export function AdminPage() {
                           <th className="px-4 py-3 text-right">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-200 bg-white">
+                      <tbody className="divide-y divide-border bg-card">
                         {filteredProducts.map((p) => (
                           <tr key={p.id}>
                             <td className="px-4 py-3">{p.name}</td>
@@ -345,7 +345,7 @@ export function AdminPage() {
 
           {activeTab === 'orders' && (
             <section className="space-y-6">
-              <div className="rounded-3xl bg-white p-6 shadow-sm">
+              <div className="rounded-3xl bg-card p-6 shadow-sm">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <h2 className="text-xl font-semibold">Orders management</h2>
                   <Input
@@ -356,11 +356,11 @@ export function AdminPage() {
                   />
                 </div>
                 {filteredOrders.length === 0 ? (
-                  <p className="mt-4 text-slate-600">No orders found.</p>
+                  <p className="mt-4 text-muted-foreground">No orders found.</p>
                 ) : (
                   <div className="mt-4 overflow-x-auto">
-                    <table className="min-w-full divide-y divide-slate-200 text-sm">
-                      <thead className="bg-slate-50 text-slate-500">
+                    <table className="min-w-full divide-y divide-border text-sm">
+                      <thead className="bg-muted text-muted-foreground">
                         <tr>
                           <th className="px-4 py-3 text-left">Order</th>
                           <th className="px-4 py-3 text-left">Customer</th>
@@ -370,7 +370,7 @@ export function AdminPage() {
                           <th className="px-4 py-3 text-right">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-200 bg-white">
+                      <tbody className="divide-y divide-border bg-card">
                         {filteredOrders.map((order) => (
                           <tr key={order.id}>
                             <td className="px-4 py-3">{order.id.slice(-8)}</td>
@@ -407,11 +407,11 @@ export function AdminPage() {
                 )}
               </div>
               {selectedOrder && (
-                <div className="rounded-3xl bg-white p-6 shadow-sm">
+                <div className="rounded-3xl bg-card p-6 shadow-sm">
                   <div className="flex items-center justify-between gap-4 mb-4">
                     <div>
                       <h3 className="text-xl font-semibold">Order {selectedOrder.id.slice(-8)}</h3>
-                      <p className="text-slate-500">Customer: {selectedOrder.customerName}</p>
+                      <p className="text-muted-foreground">Customer: {selectedOrder.customerName}</p>
                     </div>
                     <button className="text-rose-600 hover:underline" onClick={() => setSelectedOrder(null)}>
                       Close
@@ -433,9 +433,9 @@ export function AdminPage() {
                     <h4 className="text-lg font-semibold mb-2">Items</h4>
                     <ul className="space-y-2">
                       {selectedOrder.items.map((item: any, index: number) => (
-                        <li key={index} className="rounded-2xl border border-slate-200 p-4">
+                        <li key={index} className="rounded-2xl border border-border p-4">
                           <p className="font-semibold">{item.name}</p>
-                          <p className="text-sm text-slate-600">Quantity: {item.quantity} · Price: ${item.price}</p>
+                          <p className="text-sm text-muted-foreground">Quantity: {item.quantity} · Price: ${item.price}</p>
                         </li>
                       ))}
                     </ul>
@@ -447,11 +447,11 @@ export function AdminPage() {
 
           {activeTab === 'customers' && (
             <section className="space-y-6">
-              <div className="rounded-3xl bg-white p-6 shadow-sm">
+              <div className="rounded-3xl bg-card p-6 shadow-sm">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h2 className="text-xl font-semibold">Customers</h2>
-                    <p className="text-slate-500">View users, assign admin privileges, and inspect customer accounts.</p>
+                    <p className="text-muted-foreground">View users, assign admin privileges, and inspect customer accounts.</p>
                   </div>
                   <Input
                     placeholder="Search customers..."
@@ -461,11 +461,11 @@ export function AdminPage() {
                   />
                 </div>
                 {filteredCustomers.length === 0 ? (
-                  <p className="mt-4 text-slate-600">No customers found.</p>
+                  <p className="mt-4 text-muted-foreground">No customers found.</p>
                 ) : (
                   <div className="mt-4 overflow-x-auto">
-                    <table className="min-w-full divide-y divide-slate-200 text-sm">
-                      <thead className="bg-slate-50 text-slate-500">
+                    <table className="min-w-full divide-y divide-border text-sm">
+                      <thead className="bg-muted text-muted-foreground">
                         <tr>
                           <th className="px-4 py-3 text-left">Name</th>
                           <th className="px-4 py-3 text-left">Email</th>
@@ -473,7 +473,7 @@ export function AdminPage() {
                           <th className="px-4 py-3 text-right">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-200 bg-white">
+                      <tbody className="divide-y divide-border bg-card">
                         {filteredCustomers.map((customer) => (
                           <tr key={customer.uid}>
                             <td className="px-4 py-3">{customer.name}</td>

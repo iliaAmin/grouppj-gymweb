@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { collection, onSnapshot, addDoc, updateDoc, doc, query, where } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { CartItem } from './CartContext';
+import { useAuth } from './AuthContext';
 
 export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
@@ -35,10 +36,20 @@ const OrderContext = createContext<OrderContextType | undefined>(undefined);
 
 export function OrderProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<Order[]>([]);
+  const { user } = useAuth();
 
   useEffect(() => {
-    const col = collection(db, 'orders');
-    const unsubscribe = onSnapshot(col, (snap) => {
+    if (!user?.email) {
+      setOrders([]);
+      return;
+    }
+
+    const ordersCollection = collection(db, 'orders');
+    const ordersQuery = user.isAdmin
+      ? ordersCollection
+      : query(ordersCollection, where('customerEmail', '==', user.email));
+
+    const unsubscribe = onSnapshot(ordersQuery, (snap) => {
       const items: Order[] = snap.docs.map((d) => {
         const data = d.data() as any;
         return {
@@ -56,7 +67,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       setOrders(items);
     });
     return unsubscribe;
-  }, []);
+  }, [user?.email, user?.isAdmin]);
 
   const createOrder = async (
     items: CartItem[],
@@ -65,12 +76,14 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     customerName: string,
     shippingAddress: string
   ): Promise<Order> => {
+    const resolvedCustomerEmail = user?.email || customerEmail;
+    const resolvedCustomerName = user?.name || customerName;
     const newOrder: Omit<Order, 'id'> = {
       items,
       total,
       status: 'pending',
-      customerEmail,
-      customerName,
+      customerEmail: resolvedCustomerEmail,
+      customerName: resolvedCustomerName,
       shippingAddress,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -87,6 +100,9 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   };
 
   const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
+    if (!user?.isAdmin) {
+      throw new Error('Only admins can update order status.');
+    }
     const docRef = doc(db, 'orders', orderId);
     await updateDoc(docRef, { status, updatedAt: new Date() });
   };

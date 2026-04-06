@@ -8,7 +8,6 @@ import {
   User as FirebaseUser,
 } from 'firebase/auth';
 import {
-  getFirestore,
   doc,
   setDoc,
   getDoc,
@@ -129,13 +128,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (!user?.isAdmin) {
+      setUsers([]);
+      return;
+    }
+
     const col = collection(db, 'users');
     const unsubscribe = onSnapshot(col, (snapshot) => {
       const items: UserProfile[] = snapshot.docs.map((doc) => ({ uid: doc.id, ...(doc.data() as any) }));
       setUsers(items);
     });
     return unsubscribe;
-  }, []);
+  }, [user?.isAdmin]);
 
   return (
     <AuthContext.Provider
