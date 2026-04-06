@@ -155,6 +155,7 @@ export function AdminPage() {
       {csvError && <p className="mb-4 text-red-600">{csvError}</p>}
       <div className="mb-6">
         <label className="font-semibold">Import CSV</label>
+        <p className="text-sm text-gray-600 mb-2">CSV format: name,description,price,category,image,rating,stock</p>
         <input
           type="file"
           accept=".csv"
@@ -166,6 +167,7 @@ export function AdminPage() {
           }}
           className="block mt-1"
         />
+        {csvLoading && <p className="text-blue-600 mt-2">Importing products...</p>}
       </div>
       <form onSubmit={handleSubmit} className="space-y-4 max-w-xl">
         <div>
