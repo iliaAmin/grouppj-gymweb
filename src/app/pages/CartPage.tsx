@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -8,6 +9,10 @@ import { Separator } from '../components/ui/separator';
 
 export function CartPage() {
   const { cart, removeFromCart, updateQuantity, getCartTotal, clearCart } = useCart();
+
+  useEffect(() => {
+    document.title = cart.length > 0 ? 'Shopping Cart | My Make File App' : 'Cart is Empty | My Make File App';
+  }, [cart.length]);
 
   if (cart.length === 0) {
     return (
