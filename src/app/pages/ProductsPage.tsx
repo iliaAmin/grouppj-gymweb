@@ -13,7 +13,7 @@ export function ProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [priceRange, setPriceRange] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('default');
-  const { products, loading, error } = useProducts();
+  const { products, loading, error, retry } = useProducts();
 
   const categories = ['all', ...Array.from(new Set(products.map(p => p.category)))]
     .filter(Boolean) as string[];
@@ -56,7 +56,7 @@ export function ProductsPage() {
         <div className="text-center py-8">
           <p className="text-red-600 mb-4">Error: {error}</p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={retry}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
           >
             Retry

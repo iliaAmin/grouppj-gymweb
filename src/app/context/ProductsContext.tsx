@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../firebase';
 
@@ -18,6 +18,7 @@ interface ProductsContextType {
   products: Product[];
   loading: boolean;
   error: string | null;
+  retry: () => void;
   updateProduct: (id: string, updates: Partial<Product>) => Promise<void>;
   toggleStock: (id: string) => Promise<void>;
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
@@ -31,29 +32,66 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
 
-  useEffect(() => {
+  const setupListener = () => {
+    console.log('Setting up products listener...');
     setLoading(true);
     setError(null);
 
-    const col = collection(db, 'inventory');
-    const unsubscribe = onSnapshot(
-      col,
-      (snap) => {
-        const items: Product[] = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-        setProducts(items);
-        setLoading(false);
-        setError(null);
-      },
-      (err) => {
-        console.error('Error loading products:', err);
-        setError('Failed to load products');
-        setLoading(false);
-      }
-    );
+    try {
+      const col = collection(db, 'inventory');
+      const unsubscribe = onSnapshot(
+        col,
+        (snap) => {
+          console.log('Products snapshot received:', snap.docs.length, 'documents');
+          const items: Product[] = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+          console.log('Parsed products:', items.length);
+          setProducts(items);
+          setLoading(false);
+          setError(null);
+        },
+        (err) => {
+          console.error('Error loading products:', err);
+          setError(`Failed to load products: ${err.message}`);
+          setLoading(false);
+        }
+      );
 
-    return unsubscribe;
+      unsubscribeRef.current = unsubscribe;
+      return unsubscribe;
+    } catch (err) {
+      console.error('Error setting up products listener:', err);
+      setError('Failed to initialize products listener');
+      setLoading(false);
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    // Small delay to ensure Firebase is fully initialized
+    const timer = setTimeout(() => {
+      setupListener();
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      if (unsubscribeRef.current) {
+        console.log('Cleaning up products listener...');
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    };
   }, []);
+
+  const retry = () => {
+    console.log('Manual retry triggered');
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
+    }
+    setupListener();
+  };
 
   const updateProduct = async (id: string, updates: Partial<Product>) => {
     try {
@@ -102,6 +140,7 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
         products,
         loading,
         error,
+        retry,
         updateProduct,
         toggleStock,
         addProduct,
