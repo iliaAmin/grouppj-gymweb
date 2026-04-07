@@ -15,6 +15,11 @@ export function ProductsPage() {
   const [sortBy, setSortBy] = useState<string>('default');
   const { products, loading, error, retry } = useProducts();
 
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const categories = ['all', ...Array.from(new Set(products.map(p => p.category)))]
     .filter(Boolean) as string[];
 

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
 
 export interface Product {
@@ -36,34 +36,75 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
 
   const setupListener = () => {
     console.log('Setting up products listener...');
+    console.log('Firebase db instance:', db);
     setLoading(true);
     setError(null);
 
     try {
       const col = collection(db, 'inventory');
+      console.log('Collection reference:', col);
+
       const unsubscribe = onSnapshot(
         col,
         (snap) => {
           console.log('Products snapshot received:', snap.docs.length, 'documents');
-          const items: Product[] = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-          console.log('Parsed products:', items.length);
+          console.log('Snapshot metadata:', snap.metadata);
+          const items: Product[] = snap.docs.map((d) => {
+            console.log('Document data:', d.id, d.data());
+            return { id: d.id, ...(d.data() as any) };
+          });
+          console.log('Parsed products:', items.length, items);
           setProducts(items);
           setLoading(false);
           setError(null);
         },
         (err) => {
           console.error('Error loading products:', err);
-          setError(`Failed to load products: ${err.message}`);
-          setLoading(false);
+          console.error('Error code:', err.code);
+          console.error('Error message:', err.message);
+
+          // Fallback: try to fetch products once if listener fails
+          console.log('Attempting fallback fetch...');
+          getDocs(col).then((querySnap) => {
+            console.log('Fallback fetch successful:', querySnap.docs.length, 'documents');
+            const items: Product[] = querySnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+            setProducts(items);
+            setLoading(false);
+            setError(null);
+          }).catch((fallbackErr) => {
+            console.error('Fallback fetch also failed:', fallbackErr);
+            setError(`Failed to load products: ${err.message} (${err.code})`);
+            setLoading(false);
+          });
         }
       );
 
       unsubscribeRef.current = unsubscribe;
+      console.log('Listener setup complete');
       return unsubscribe;
     } catch (err) {
       console.error('Error setting up products listener:', err);
-      setError('Failed to initialize products listener');
-      setLoading(false);
+
+      // Try fallback fetch if listener setup fails
+      try {
+        const col = collection(db, 'inventory');
+        getDocs(col).then((querySnap) => {
+          console.log('Fallback fetch successful after setup error:', querySnap.docs.length, 'documents');
+          const items: Product[] = querySnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+          setProducts(items);
+          setLoading(false);
+          setError(null);
+        }).catch((fallbackErr) => {
+          console.error('Fallback fetch failed:', fallbackErr);
+          setError('Failed to initialize products listener');
+          setLoading(false);
+        });
+      } catch (fallbackErr) {
+        console.error('Fallback setup also failed:', fallbackErr);
+        setError('Failed to initialize products listener');
+        setLoading(false);
+      }
+
       return null;
     }
   };
