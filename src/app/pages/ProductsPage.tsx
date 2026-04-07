@@ -13,8 +13,7 @@ export function ProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [priceRange, setPriceRange] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('default');
-  const { products } = useProducts();
-  const [loading, setLoading] = useState(true);
+  const { products, loading, error } = useProducts();
 
   const categories = ['all', ...Array.from(new Set(products.map(p => p.category)))]
     .filter(Boolean) as string[];
@@ -50,15 +49,20 @@ export function ProductsPage() {
     return filtered;
   }, [searchQuery, selectedCategory, priceRange, sortBy]);
 
-  // use context to provide products; snapshot listener will populate
-  useEffect(() => {
-    // once products are loaded (could be empty) we can clear loader
-    setLoading(false);
-  }, [products]);
-
   return (
     <div className="min-h-screen bg-muted/30">
       {loading && <p className="text-center py-8">Loading products...</p>}
+      {error && (
+        <div className="text-center py-8">
+          <p className="text-red-600 mb-4">Error: {error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+          >
+            Retry
+          </button>
+        </div>
+      )}
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground py-12 px-4">
         <div className="container mx-auto text-center">

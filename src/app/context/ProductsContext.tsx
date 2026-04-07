@@ -16,6 +16,8 @@ export interface Product {
 
 interface ProductsContextType {
   products: Product[];
+  loading: boolean;
+  error: string | null;
   updateProduct: (id: string, updates: Partial<Product>) => Promise<void>;
   toggleStock: (id: string) => Promise<void>;
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
@@ -27,20 +29,40 @@ const ProductsContext = createContext<ProductsContextType | undefined>(undefined
 
 export function ProductsProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setLoading(true);
+    setError(null);
+
     const col = collection(db, 'inventory');
-    const unsubscribe = onSnapshot(col, (snap) => {
-      const items: Product[] = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-      setProducts(items);
-    });
+    const unsubscribe = onSnapshot(
+      col,
+      (snap) => {
+        const items: Product[] = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+        setProducts(items);
+        setLoading(false);
+        setError(null);
+      },
+      (err) => {
+        console.error('Error loading products:', err);
+        setError('Failed to load products');
+        setLoading(false);
+      }
+    );
 
     return unsubscribe;
   }, []);
 
   const updateProduct = async (id: string, updates: Partial<Product>) => {
-    const docRef = doc(db, 'inventory', id);
-    await updateDoc(docRef, updates);
+    try {
+      const docRef = doc(db, 'inventory', id);
+      await updateDoc(docRef, updates);
+    } catch (err) {
+      console.error('Error updating product:', err);
+      throw err;
+    }
   };
 
   const toggleStock = async (id: string) => {
@@ -51,13 +73,23 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
   };
 
   const addProduct = async (product: Omit<Product, 'id'>) => {
-    const col = collection(db, 'inventory');
-    await addDoc(col, product);
+    try {
+      const col = collection(db, 'inventory');
+      await addDoc(col, product);
+    } catch (err) {
+      console.error('Error adding product:', err);
+      throw err;
+    }
   };
 
   const deleteProduct = async (id: string) => {
-    const docRef = doc(db, 'inventory', id);
-    await deleteDoc(docRef);
+    try {
+      const docRef = doc(db, 'inventory', id);
+      await deleteDoc(docRef);
+    } catch (err) {
+      console.error('Error deleting product:', err);
+      throw err;
+    }
   };
 
   const getProductById = (id: string) => {
@@ -68,6 +100,8 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
     <ProductsContext.Provider
       value={{
         products,
+        loading,
+        error,
         updateProduct,
         toggleStock,
         addProduct,
