@@ -35,52 +35,38 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
   const setupListener = () => {
-    console.log('Setting up products listener...');
-    console.log('Firebase db instance:', db);
     setLoading(true);
     setError(null);
 
     try {
       const col = collection(db, 'inventory');
-      console.log('Collection reference:', col);
 
       const unsubscribe = onSnapshot(
         col,
         (snap) => {
-          console.log('Products snapshot received:', snap.docs.length, 'documents');
-          console.log('Snapshot metadata:', snap.metadata);
-          const items: Product[] = snap.docs.map((d) => {
-            console.log('Document data:', d.id, d.data());
-            return { id: d.id, ...(d.data() as any) };
-          });
-          console.log('Parsed products:', items.length, items);
+          const items: Product[] = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
           setProducts(items);
           setLoading(false);
           setError(null);
         },
         (err) => {
           console.error('Error loading products:', err);
-          console.error('Error code:', err.code);
-          console.error('Error message:', err.message);
 
           // Fallback: try to fetch products once if listener fails
-          console.log('Attempting fallback fetch...');
           getDocs(col).then((querySnap) => {
-            console.log('Fallback fetch successful:', querySnap.docs.length, 'documents');
             const items: Product[] = querySnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
             setProducts(items);
             setLoading(false);
             setError(null);
           }).catch((fallbackErr) => {
             console.error('Fallback fetch also failed:', fallbackErr);
-            setError(`Failed to load products: ${err.message} (${err.code})`);
+            setError(`Failed to load products: ${err.message}`);
             setLoading(false);
           });
         }
       );
 
       unsubscribeRef.current = unsubscribe;
-      console.log('Listener setup complete');
       return unsubscribe;
     } catch (err) {
       console.error('Error setting up products listener:', err);
@@ -89,19 +75,18 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
       try {
         const col = collection(db, 'inventory');
         getDocs(col).then((querySnap) => {
-          console.log('Fallback fetch successful after setup error:', querySnap.docs.length, 'documents');
           const items: Product[] = querySnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
           setProducts(items);
           setLoading(false);
           setError(null);
         }).catch((fallbackErr) => {
           console.error('Fallback fetch failed:', fallbackErr);
-          setError('Failed to initialize products listener');
+          setError('Failed to initialize products');
           setLoading(false);
         });
       } catch (fallbackErr) {
         console.error('Fallback setup also failed:', fallbackErr);
-        setError('Failed to initialize products listener');
+        setError('Failed to initialize products');
         setLoading(false);
       }
 
@@ -118,7 +103,6 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
     return () => {
       clearTimeout(timer);
       if (unsubscribeRef.current) {
-        console.log('Cleaning up products listener...');
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
@@ -126,7 +110,6 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const retry = () => {
-    console.log('Manual retry triggered');
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
       unsubscribeRef.current = null;

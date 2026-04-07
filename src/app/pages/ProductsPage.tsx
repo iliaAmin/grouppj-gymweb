@@ -52,7 +52,7 @@ export function ProductsPage() {
     }
 
     return filtered;
-  }, [searchQuery, selectedCategory, priceRange, sortBy]);
+  }, [products, searchQuery, selectedCategory, priceRange, sortBy]);
 
   return (
     <div className="min-h-screen bg-muted/30">
