@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 export interface Product {
   id?: number | string; // firestore docs may use string ids
@@ -30,7 +30,22 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<CartItem[]>(() => {
+    try {
+      const stored = window.localStorage.getItem('gymshop-cart');
+      return stored ? JSON.parse(stored) as CartItem[] : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('gymshop-cart', JSON.stringify(cart));
+    } catch {
+      // ignore storage failures
+    }
+  }, [cart]);
 
   const addToCart = (product: Product) => {
     setCart((prevCart) => {
