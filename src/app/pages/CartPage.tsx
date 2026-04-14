@@ -8,6 +8,7 @@ import { Card, CardContent } from '../components/ui/card';
 import { Separator } from '../components/ui/separator';
 
 export function CartPage() {
+  const navigate = useNavigate();
   const { cart, removeFromCart, updateQuantity, getCartTotal, clearCart } = useCart();
 
   useEffect(() => {
@@ -36,8 +37,6 @@ export function CartPage() {
       </div>
     );
   }
-
-  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -128,7 +127,12 @@ export function CartPage() {
 
             <Button
               variant="outline"
-              onClick={clearCart}
+              onClick={() => {
+                clearCart();
+                window.requestAnimationFrame(() => {
+                  navigate('/products');
+                });
+              }}
               className="w-full"
             >
               Clear Cart
