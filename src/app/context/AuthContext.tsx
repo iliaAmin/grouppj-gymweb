@@ -6,6 +6,9 @@ import {
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
   User as FirebaseUser,
+  GoogleAuthProvider,
+  GithubAuthProvider,
+  signInWithPopup,
 } from 'firebase/auth';
 import {
   doc,
@@ -30,6 +33,8 @@ interface AuthContextType {
   users: UserProfile[];
   login: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  signInWithGithub: () => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
   isAdmin: boolean;
@@ -108,6 +113,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const signInWithGoogle = async () => {
+    console.log('[Auth] Google sign-in attempt');
+    try {
+      const provider = new GoogleAuthProvider();
+      const credential = await signInWithPopup(auth, provider);
+      console.log('[Auth] Google sign-in success', credential.user.uid);
+      await fetchProfile(credential.user);
+    } catch (err) {
+      console.error('[Auth] Google sign-in error', err);
+      throw err;
+    }
+  };
+
+  const signInWithGithub = async () => {
+    console.log('[Auth] GitHub sign-in attempt');
+    try {
+      const provider = new GithubAuthProvider();
+      const credential = await signInWithPopup(auth, provider);
+      console.log('[Auth] GitHub sign-in success', credential.user.uid);
+      await fetchProfile(credential.user);
+    } catch (err) {
+      console.error('[Auth] GitHub sign-in error', err);
+      throw err;
+    }
+  };
+
   const setAdmin = async (uid: string, isAdmin: boolean) => {
     await updateDoc(doc(db, 'users', uid), { isAdmin });
     if (user && user.email && uid === auth.currentUser?.uid) {
@@ -148,6 +179,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         users,
         login,
         signUp,
+        signInWithGoogle,
+        signInWithGithub,
         logout,
         isAuthenticated: !!user,
         isAdmin: !!user?.isAdmin,
